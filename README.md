@@ -2,7 +2,7 @@
 
 **PubScope** is an open-source platform designed to transform dense scientific literature into structured, interactive, and searchable online databases.
 
-The current dataset showcases phenotypic, genomic, morphological, and physiological characterizations extracted from **80 Open-Access (OA) peer-reviewed publications** (*LitSift Bacteriophage Dataset*).
+The current dataset showcases phenotypic, genomic, morphological, and physiological characterizations extracted from **80 Open-Access (OA) peer-reviewed publications** (*PubScope Bacteriophage Dataset*).
 
 ## Key Features
 - **🔍 Multi-Dimensional Filtering**: Search by organism, host species, lifecycle/phenotype, isolation origin, and genomic attributes.

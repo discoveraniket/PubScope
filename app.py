@@ -171,7 +171,7 @@ def extract_accession_link(val):
     return None
 
 @st.cache_data
-def load_data(csv_path: str = "LitSift_Extracted_Dataset.csv"):
+def load_data(csv_path: str = "PubScope_Extracted_Dataset.csv"):
     df = pd.read_csv(csv_path, encoding="utf-8", encoding_errors="replace")
     df.columns = [clean_col_name(c) for c in df.columns]
 
@@ -200,7 +200,7 @@ except Exception as e:
 # ---------------------------------------------------------
 # Sidebar Filters
 # ---------------------------------------------------------
-st.sidebar.markdown("## 🧬 LitSift Filters")
+st.sidebar.markdown("## 🧬 PubScope Filters")
 st.sidebar.markdown("Filter bacteriophage records by taxonomy, host, or genomics.")
 
 # 1. Global text search
@@ -288,7 +288,7 @@ st.sidebar.caption("Powered by **PubScope** · Extracted from 80 Open-Access pub
 # ---------------------------------------------------------
 st.title("🔭 PubScope | Scientific Literature Data Explorer")
 st.markdown(
-    "Explore curated biological, morphological, and genomic traits extracted from **80 Open-Access (OA) scientific publications** *(LitSift Bacteriophage Dataset)*."
+    "Explore curated biological, morphological, and genomic traits extracted from **80 Open-Access (OA) scientific publications** *(PubScope Bacteriophage Dataset)*."
 )
 
 # Metric KPI summary cards
@@ -410,7 +410,7 @@ with tab_table:
         st.download_button(
             label="📥 Download Filtered Data (CSV)",
             data=csv_filtered,
-            file_name="litsift_filtered_phages.csv",
+            file_name="PubScope_filtered_phages.csv",
             mime="text/csv",
             use_container_width=True
         )
@@ -573,9 +573,9 @@ with tab_viz:
 # TAB 4: About & Deploy Guide
 # ---------------------------------------------------------
 with tab_about:
-    st.subheader("About the LitSift Dataset & Deployment Guide")
+    st.subheader("About the PubScope Dataset & Deployment Guide")
     st.markdown("""
-    ### 🔬 About LitSift Dataset
+    ### 🔬 About PubScope Dataset
     This dataset compiles granular phenotypic, morphological, and genomic data points extracted from **80 Open-Access (OA) research articles** on bacteriophage isolation and characterization.
 
     #### Cataloged Properties:
