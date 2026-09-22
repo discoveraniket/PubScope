@@ -171,7 +171,7 @@ def extract_accession_link(val):
     return None
 
 @st.cache_data
-def load_data(csv_path: str = "PubScope_Extracted_Dataset.csv"):
+def load_data(csv_path: str = "LitSift_Extracted_Dataset.csv"):
     df = pd.read_csv(csv_path, encoding="utf-8", encoding_errors="replace")
     df.columns = [clean_col_name(c) for c in df.columns]
 
