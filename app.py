@@ -12,152 +12,290 @@ st.set_page_config(
     page_title="PubScope | Literature Dataset Explorer",
     page_icon="🔭",
     layout="wide",
-    initial_sidebar_state="collapsed",  # Mobile-friendly: don't block the screen on phones
+    initial_sidebar_state="collapsed",
 )
 
 # ---------------------------------------------------------
-# Polished Mobile-First & Desktop CSS
+# Session State for Theme and Quick Search
 # ---------------------------------------------------------
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* Metrics Responsive Grid */
-    .metrics-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        margin-top: 10px;
-        margin-bottom: 20px;
-    }
-    .metric-card {
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 14px 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        text-align: left;
-    }
-    .metric-value {
-        font-size: 1.6rem;
-        font-weight: 700;
-        color: #0f172a;
-        margin-top: 2px;
-        line-height: 1.2;
-    }
-    .metric-label {
-        font-size: 0.78rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: #64748b;
-    }
-    
-    /* Badges */
-    .badge {
-        display: inline-block;
-        padding: 3px 8px;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    .badge-lytic { background-color: #dcfce7; color: #15803d; }
-    .badge-lysogenic { background-color: #f3e8ff; color: #7e22ce; }
-    .badge-other { background-color: #f1f5f9; color: #475569; }
+if "theme_mode" not in st.session_state:
+    st.session_state["theme_mode"] = "System"
 
-    /* Mobile Phage Card Component */
-    .mobile-phage-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
+if "search_input" not in st.session_state:
+    st.session_state["search_input"] = ""
+
+# ---------------------------------------------------------
+# Dynamic Theme CSS (System, Light, Dark)
+# ---------------------------------------------------------
+theme_mode = st.session_state["theme_mode"]
+
+# CSS rules based on theme selection
+if theme_mode == "Dark":
+    theme_css = """
+    :root {
+        --bg-main: #0b0f19;
+        --bg-card: #131b2e;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --border-color: #243049;
+        --stat-bg: #1c273e;
+        --search-border: #38bdf8;
+        --search-glow: rgba(56, 189, 248, 0.25);
+        --pill-bg: #1e293b;
+        --pill-border: #334155;
+    }
+    .stApp {
+        background-color: var(--bg-main) !important;
+        color: var(--text-main) !important;
+    }
+    header[data-testid="stHeader"] {
+        background-color: var(--bg-main) !important;
+    }
+    div[data-testid="stExpander"] {
+        background-color: var(--bg-card) !important;
+        border-color: var(--border-color) !important;
+    }
+    """
+    plotly_template = "plotly_dark"
+elif theme_mode == "Light":
+    theme_css = """
+    :root {
+        --bg-main: #f8fafc;
+        --bg-card: #ffffff;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --border-color: #e2e8f0;
+        --stat-bg: #f1f5f9;
+        --search-border: #0070F3;
+        --search-glow: rgba(0, 112, 243, 0.18);
+        --pill-bg: #ffffff;
+        --pill-border: #cbd5e1;
+    }
+    .stApp {
+        background-color: var(--bg-main) !important;
+        color: var(--text-main) !important;
+    }
+    """
+    plotly_template = "plotly_white"
+else:  # System Default: Responsive to OS mode via media query
+    theme_css = """
+    :root {
+        --bg-main: #f8fafc;
+        --bg-card: #ffffff;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --border-color: #e2e8f0;
+        --stat-bg: #f1f5f9;
+        --search-border: #0070F3;
+        --search-glow: rgba(0, 112, 243, 0.18);
+        --pill-bg: #ffffff;
+        --pill-border: #cbd5e1;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg-main: #0b0f19;
+            --bg-card: #131b2e;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #243049;
+            --stat-bg: #1c273e;
+            --search-border: #38bdf8;
+            --search-glow: rgba(56, 189, 248, 0.25);
+            --pill-bg: #1e293b;
+            --pill-border: #334155;
+        }
+        .stApp {
+            background-color: var(--bg-main) !important;
+            color: var(--text-main) !important;
+        }
+        header[data-testid="stHeader"] {
+            background-color: var(--bg-main) !important;
+        }
+        div[data-testid="stExpander"] {
+            background-color: var(--bg-card) !important;
+            border-color: var(--border-color) !important;
+        }
+    }
+    """
+    plotly_template = "plotly_dark" if False else "plotly_white"
+
+st.markdown(f"""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    
+    {theme_css}
+    
+    html, body, [class*="css"] {{
+        font-family: 'Inter', -apple-system, sans-serif;
+    }}
+    
+    /* Top Header Bar */
+    .top-header-bar {{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 0 12px 0;
+        margin-bottom: 4px;
+        border-bottom: 1px solid var(--border-color);
+    }}
+    .brand-title {{
+        font-size: 1.45rem;
+        font-weight: 800;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        letter-spacing: -0.02em;
+    }}
+    .brand-tagline {{
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        font-weight: 500;
+        margin-top: 1px;
+    }}
+
+    /* HERO SEARCH BAR - THE MAIN VISUAL FOCUS */
+    .hero-search-card {{
+        background: var(--bg-card);
+        border: 2.5px solid var(--search-border);
+        border-radius: 16px;
+        padding: 16px 18px 14px 18px;
+        box-shadow: 0 10px 30px -5px var(--search-glow), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        margin-top: 10px;
+        margin-bottom: 12px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }}
+    .hero-search-card:focus-within {{
+        border-color: #0284c7;
+        box-shadow: 0 12px 35px -5px var(--search-glow);
+    }}
+    .hero-search-title {{
+        font-size: 0.98rem;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }}
+    .hero-search-subtitle {{
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        margin-bottom: 10px;
+    }}
+
+    /* Mini Stats Strip */
+    .mini-stats-strip {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+        margin-bottom: 16px;
+    }}
+    .mini-stat-pill {{
+        background: var(--stat-bg);
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        border-radius: 9999px;
+        padding: 4px 12px;
+        font-size: 0.78rem;
+        font-weight: 500;
+    }}
+    .mini-stat-pill b {{
+        color: var(--text-main);
+        font-weight: 700;
+    }}
+
+    /* Phage Cards */
+    .mobile-phage-card {{
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
         border-radius: 12px;
         padding: 16px;
         margin-bottom: 12px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
         transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-    .mobile-phage-card:hover {
-        border-color: #cbd5e1;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
-    }
-    .phage-card-header {
+    }}
+    .mobile-phage-card:hover {{
+        border-color: #94a3b8;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.07);
+    }}
+    .phage-card-header {{
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 8px;
-    }
-    .phage-name-title {
+    }}
+    .phage-name-title {{
         font-size: 1.15rem;
         font-weight: 700;
-        color: #0f172a;
-    }
-    .phage-sub-title {
+        color: var(--text-main);
+    }}
+    .phage-sub-title {{
         font-size: 0.88rem;
-        color: #475569;
+        color: var(--text-muted);
         margin-bottom: 10px;
-    }
-    .phage-stats-grid {
+    }}
+    .phage-stats-grid {{
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 8px;
-        background: #f8fafc;
+        background: var(--stat-bg);
         border-radius: 8px;
         padding: 10px;
         font-size: 0.82rem;
         margin-bottom: 10px;
-    }
-    .stat-item-label {
-        color: #64748b;
+    }}
+    .stat-item-label {{
+        color: var(--text-muted);
         font-weight: 500;
-    }
-    .stat-item-val {
-        color: #0f172a;
+    }}
+    .stat-item-val {{
+        color: var(--text-main);
         font-weight: 600;
-    }
+    }}
+    .badge {{
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }}
+    .badge-lytic {{ background-color: rgba(22, 163, 74, 0.18); color: #16a34a; border: 1px solid rgba(22, 163, 74, 0.3); }}
+    .badge-lysogenic {{ background-color: rgba(147, 51, 234, 0.18); color: #a855f7; border: 1px solid rgba(147, 51, 234, 0.3); }}
+    .badge-other {{ background-color: rgba(148, 163, 184, 0.18); color: #64748b; border: 1px solid rgba(148, 163, 184, 0.3); }}
 
-    /* Links inside cards */
-    .action-links {
+    .action-links {{
         display: flex;
         gap: 12px;
         font-size: 0.82rem;
         font-weight: 600;
         margin-top: 6px;
-    }
+    }}
 
-    /* Media query adjustments for mobile screens */
-    @media (max-width: 768px) {
-        .metrics-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 8px !important;
-        }
-        .metric-card {
-            padding: 10px 12px !important;
-            border-radius: 10px !important;
-        }
-        .metric-value {
-            font-size: 1.35rem !important;
-        }
-        .metric-label {
-            font-size: 0.7rem !important;
-        }
-        .mobile-phage-card {
+    /* Media query adjustments for mobile */
+    @media (max-width: 768px) {{
+        .brand-title {{
+            font-size: 1.25rem !important;
+        }}
+        .hero-search-card {{
+            padding: 12px 14px 10px 14px !important;
+            border-radius: 12px !important;
+        }}
+        .mobile-phage-card {{
             padding: 12px !important;
-        }
-        .phage-name-title {
+        }}
+        .phage-name-title {{
             font-size: 1.05rem !important;
-        }
-        /* Make tab buttons wrap nicely on small screens */
-        div[data-baseweb="tab-list"] {
-            gap: 4px !important;
-        }
-        button[data-baseweb="tab"] {
-            padding: 8px 10px !important;
-            font-size: 0.82rem !important;
-        }
-    }
+        }}
+        div[data-baseweb="tab-list"] {{
+            gap: 2px !important;
+        }}
+        button[data-baseweb="tab"] {{
+            padding: 6px 8px !important;
+            font-size: 0.8rem !important;
+        }}
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -267,25 +405,83 @@ except Exception as e:
 
 
 # ---------------------------------------------------------
-# Main Page Header & KPI Cards (Responsive CSS Grid)
+# TOP MINIMAL HEADER BAR (Non-verbose, Clean Focus)
 # ---------------------------------------------------------
-st.title("🔭 PubScope")
-st.markdown(
-    "Explore phenotypic, genomic, and physiological traits of bacteriophages extracted from **80 Open-Access (OA) research publications**."
-)
+h_col1, h_col2 = st.columns([3, 1], vertical_alignment="center")
+
+with h_col1:
+    st.markdown("""
+    <div style="display: flex; align-items: baseline; gap: 8px;">
+        <span class="brand-title">🔭 PubScope</span>
+        <span style="font-size: 0.78rem; font-weight: 600; opacity: 0.7;">· Bacteriophage Database</span>
+    </div>
+    <div class="brand-tagline">80 Open-Access publications · Curated traits & genomics</div>
+    """, unsafe_allow_html=True)
+
+with h_col2:
+    theme_options = ["💻 System", "☀️ Light", "🌙 Dark"]
+    theme_idx = 0 if theme_mode == "System" else (1 if theme_mode == "Light" else 2)
+    new_theme = st.selectbox(
+        "Theme",
+        options=theme_options,
+        index=theme_idx,
+        label_visibility="collapsed",
+        key="theme_dropdown"
+    )
+    selected_theme_clean = new_theme.split(" ")[-1]
+    if selected_theme_clean != theme_mode:
+        st.session_state["theme_mode"] = selected_theme_clean
+        st.rerun()
+
 
 # ---------------------------------------------------------
-# Mobile-First Search & Inline Filter Controls
+# HERO SEARCH AREA (Prominent, High-Focus Design)
 # ---------------------------------------------------------
-# Prominent Top Search Bar (Instant Mobile Access)
+st.markdown("""
+<div class="hero-search-card">
+    <div class="hero-search-title">🔍 Search Phage Database</div>
+    <div class="hero-search-subtitle">Instant search across phage names, host bacteria, accessions, DOIs, and morphology.</div>
+</div>
+""", unsafe_allow_html=True)
+
+# Search Input
 search_query = st.text_input(
-    "🔍 Search Phages, Hosts, Accessions, DOIs, Locations:",
-    placeholder="e.g. Escherichia, Sfin-2, Pseudomonas, sewage, MK972831...",
-    key="global_search"
+    "Search",
+    value=st.session_state["search_input"],
+    placeholder="e.g. Escherichia, Sfin-2, Pseudomonas, sewage, MK972831, 10.3389...",
+    label_visibility="collapsed",
+    key="main_search_box"
 )
+st.session_state["search_input"] = search_query
 
-# Expandable filter drawer (so mobile users don't need to open the sidebar)
-with st.expander("🎛️ Detailed Filters (Host, Lifestyle, Isolation Source, Genome Size)", expanded=False):
+# Quick-Search Suggested Pills (Tactile & Fast)
+pill_col1, pill_col2 = st.columns([1, 5], vertical_alignment="center")
+with pill_col1:
+    st.caption("**Quick Filters:**")
+with pill_col2:
+    quick_filters = ["All", "E. coli", "P. aeruginosa", "K. pneumoniae", "S. aureus", "Lytic", "Sewage"]
+    p_cols = st.columns(len(quick_filters))
+    for i, tag in enumerate(quick_filters):
+        with p_cols[i]:
+            if st.button(tag, key=f"pill_{tag}", use_container_width=True):
+                if tag == "All":
+                    st.session_state["search_input"] = ""
+                elif tag == "E. coli":
+                    st.session_state["search_input"] = "Escherichia"
+                elif tag == "P. aeruginosa":
+                    st.session_state["search_input"] = "Pseudomonas aeruginosa"
+                elif tag == "K. pneumoniae":
+                    st.session_state["search_input"] = "Klebsiella"
+                elif tag == "S. aureus":
+                    st.session_state["search_input"] = "Staphylococcus"
+                elif tag == "Lytic":
+                    st.session_state["search_input"] = "Lytic"
+                elif tag == "Sewage":
+                    st.session_state["search_input"] = "sewage"
+                st.rerun()
+
+# Expandable Advanced Filters Drawer
+with st.expander("🎛️ Advanced Filters (Host, Lifestyle, Source, Size Slider)", expanded=False):
     f_col1, f_col2 = st.columns(2)
     with f_col1:
         all_hosts = sorted([h for h in df["Host Bacterial Species"].unique() if h != "Not reported"])
@@ -324,8 +520,8 @@ with st.expander("🎛️ Detailed Filters (Host, Lifestyle, Isolation Source, G
         else:
             size_range = None
 
-    if st.button("🔄 Reset Filters", key="reset_filters"):
-        st.session_state["global_search"] = ""
+    if st.button("🔄 Clear All Filters & Search", key="reset_filters"):
+        st.session_state["search_input"] = ""
         st.rerun()
 
 # Apply filter logic
@@ -351,29 +547,17 @@ if size_range and size_range != (min_size, max_size):
         (filtered_df["Genome_Size_bp_num"] <= size_range[1])
     ]
 
-# KPI Summary Cards (Pure Responsive CSS Grid)
+# Mini Stats Strip (Compact & Zero clutter)
 n_hosts = filtered_df["Host Bacterial Species"].nunique()
 n_lytic = (filtered_df["Phage_Type_Clean"] == "Lytic").sum()
 n_sequenced = filtered_df["Genome_Size_bp_num"].notna().sum()
 
 st.markdown(f"""
-<div class="metrics-grid">
-    <div class="metric-card">
-        <div class="metric-label">Phage Records</div>
-        <div class="metric-value">{len(filtered_df)} <span style="font-size: 0.9rem; color: #94a3b8; font-weight: 500;">/ {len(df)}</span></div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-label">Target Hosts</div>
-        <div class="metric-value">{n_hosts}</div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-label">Lytic Phages</div>
-        <div class="metric-value">{n_lytic}</div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-label">Sequenced Genomes</div>
-        <div class="metric-value">{n_sequenced}</div>
-    </div>
+<div class="mini-stats-strip">
+    <span class="mini-stat-pill">📋 Records: <b>{len(filtered_df)} / {len(df)}</b></span>
+    <span class="mini-stat-pill">🧫 Target Hosts: <b>{n_hosts}</b></span>
+    <span class="mini-stat-pill">⚡ Lytic: <b>{n_lytic}</b></span>
+    <span class="mini-stat-pill">🧬 Sequenced: <b>{n_sequenced}</b></span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -392,8 +576,7 @@ tab_table, tab_deepdive, tab_viz, tab_about = st.tabs([
 # TAB 1: Phage Directory (Cards vs Table)
 # ---------------------------------------------------------
 with tab_table:
-    # Mode selector: default to Cards for smooth mobile reading
-    header_col1, header_col2 = st.columns([1, 1])
+    header_col1, header_col2 = st.columns([1, 1], vertical_alignment="center")
     with header_col1:
         st.subheader("Bacteriophage Directory")
     with header_col2:
@@ -405,16 +588,15 @@ with tab_table:
         )
 
     if filtered_df.empty:
-        st.warning("No phages found matching the active search or filters. Try clearing some filters.")
+        st.warning("No phages found matching the active search or filters. Try clicking 'All' or clearing filters.")
     elif view_mode == "📱 Mobile Cards":
-        # Card Feed with Pagination
         PAGE_SIZE = 10
         total_items = len(filtered_df)
         total_pages = max(1, math.ceil(total_items / PAGE_SIZE))
         
-        pag_col1, pag_col2 = st.columns([2, 1])
+        pag_col1, pag_col2 = st.columns([2, 1], vertical_alignment="center")
         with pag_col1:
-            st.caption(f"Showing {total_items} phages (10 per page)")
+            st.caption(f"Showing {total_items} phages (Page 10 records per page)")
         with pag_col2:
             current_page = st.selectbox(
                 "Page",
@@ -430,14 +612,12 @@ with tab_table:
         for _, row in page_records.iterrows():
             badge_class = "badge-lytic" if row["Phage_Type_Clean"] == "Lytic" else ("badge-lysogenic" if "Lysogenic" in row["Phage_Type_Clean"] else "badge-other")
             
-            # Format display fields
             phage_name = row.get("Phage Name", "Unknown Phage")
             host_name = row.get("Host Bacterial Species", "Unspecified Host")
             p_type = row.get("Phage_Type_Clean", "Not reported")
             genome_size = row.get("Phage Genome size (bp)", "Not reported")
             gc_content = row.get("Phage GC content (%)", "Not reported")
             accession = row.get("Phage Genome Accession/Bioproject", "Not reported")
-            location = row.get("Place of Sample collection", "Not reported")
             sample_src = row.get("Phage isolation Sample", "Not reported")
             doi_link = row.get("DOI_URL")
             ncbi_link = row.get("NCBI_URL")
@@ -464,7 +644,6 @@ with tab_table:
             </div>
             """, unsafe_allow_html=True)
 
-            # Mobile Collapsible Ultrastructure & Kinetics
             with st.expander(f"🔬 More Traits for {phage_name}", expanded=False):
                 d1, d2 = st.columns(2)
                 with d1:
@@ -480,7 +659,6 @@ with tab_table:
                     st.markdown(f"**Optimal MOI:** {row.get('Optimal MOI', 'Not reported')}")
 
     else:
-        # Full Desktop Table View
         column_config = {
             "DOI_URL": st.column_config.LinkColumn(
                 "Article DOI Link",
@@ -576,17 +754,16 @@ with tab_deepdive:
             st.markdown(f"""
             <div class="mobile-phage-card" style="padding: 20px; border-left: 4px solid #0070F3;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <div style="font-size: 1.35rem; font-weight: 700; color: #0f172a;">🦠 {p.get('Phage Name', 'N/A')}</div>
+                    <div style="font-size: 1.35rem; font-weight: 700; color: var(--text-main);">🦠 {p.get('Phage Name', 'N/A')}</div>
                     <span class="badge badge-lytic">{p.get('Phage_Type_Clean', 'Unknown')}</span>
                 </div>
-                <div style="color: #64748b; font-size: 0.95rem; margin-bottom: 12px;">
-                    Target Host: <b style="color: #0f172a;">{p.get('Host Bacterial Species', 'N/A')}</b>
+                <div style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 12px;">
+                    Target Host: <b style="color: var(--text-main);">{p.get('Host Bacterial Species', 'N/A')}</b>
                     {f" | Challenge Host: <i>{p.get('Experimental / Challenge Host')}</i>" if p.get('Experimental / Challenge Host') != 'Not reported' else ''}
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-            # Responsive Sections (stacking on mobile)
             c1, c2 = st.columns(2)
             with c1:
                 st.markdown("##### 🧬 Genomic Profile")
@@ -629,12 +806,11 @@ with tab_deepdive:
 
 
 # ---------------------------------------------------------
-# TAB 3: Visual Analytics (Full-Width on Small Screens)
+# TAB 3: Visual Analytics
 # ---------------------------------------------------------
 with tab_viz:
     st.subheader("Visual Analytics & Distributions")
 
-    # Host Frequency Bar Chart
     top_hosts = filtered_df["Host Bacterial Species"].value_counts().head(10).reset_index()
     top_hosts.columns = ["Host Species", "Count"]
     
@@ -646,6 +822,7 @@ with tab_viz:
         title="Top 10 Bacterial Hosts in Filtered Set",
         color="Count",
         color_continuous_scale="Blues",
+        template=plotly_template
     )
     fig_hosts.update_layout(
         yaxis=dict(autorange="reversed"),
@@ -654,7 +831,6 @@ with tab_viz:
     )
     st.plotly_chart(fig_hosts, use_container_width=True)
 
-    # Lifestyle Donut Chart
     type_counts = filtered_df["Phage_Type_Clean"].value_counts().reset_index()
     type_counts.columns = ["Lifestyle", "Count"]
 
@@ -664,12 +840,12 @@ with tab_viz:
         values="Count",
         title="Phage Lifestyle Distribution",
         hole=0.45,
-        color_discrete_sequence=px.colors.qualitative.Pastel
+        color_discrete_sequence=px.colors.qualitative.Pastel,
+        template=plotly_template
     )
     fig_type.update_layout(margin=dict(l=10, r=10, t=35, b=20), height=340)
     st.plotly_chart(fig_type, use_container_width=True)
 
-    # Genome Size vs GC Content Scatter Plot
     st.markdown("##### 🧬 Genome Size vs. GC Content (%)")
     scatter_df = filtered_df.dropna(subset=["Genome_Size_bp_num", "GC_Content_num"])
 
@@ -687,7 +863,8 @@ with tab_viz:
                 "Host Bacterial Species": "Host"
             },
             title="Genome Size vs GC Content (Hover/Tap to inspect)",
-            height=440
+            height=440,
+            template=plotly_template
         )
         fig_scatter.update_layout(margin=dict(l=10, r=10, t=35, b=20), legend=dict(orientation="h", y=-0.2))
         st.plotly_chart(fig_scatter, use_container_width=True)
