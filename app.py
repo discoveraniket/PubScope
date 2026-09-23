@@ -147,41 +147,64 @@ st.markdown(f"""
         gap: 8px;
         letter-spacing: -0.02em;
     }}
-    .brand-tagline {{
+    /* Ultra-compact Header */
+    .brand-sub {{
         font-size: 0.8rem;
-        color: var(--text-muted);
         font-weight: 500;
-        margin-top: 1px;
+        color: var(--text-muted);
     }}
-
-    /* HERO SEARCH BAR - THE MAIN VISUAL FOCUS */
-    .hero-search-card {{
+    
+    /* UNIFIED SEARCH BOX WITH INTEGRATED LABEL */
+    div[data-testid="stTextInput"]:has(input[aria-label="🔍 Search Phage Database"]) {{
         background: var(--bg-card);
-        border: 2.5px solid var(--search-border);
-        border-radius: 16px;
-        padding: 16px 18px 14px 18px;
-        box-shadow: 0 10px 30px -5px var(--search-glow), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        margin-top: 10px;
-        margin-bottom: 12px;
+        border: 2px solid var(--search-border);
+        border-radius: 14px;
+        padding: 12px 14px 14px 14px;
+        box-shadow: 0 8px 24px -4px var(--search-glow), 0 2px 4px rgba(0, 0, 0, 0.04);
+        margin-top: 6px;
+        margin-bottom: 8px;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }}
-    .hero-search-card:focus-within {{
+    div[data-testid="stTextInput"]:has(input[aria-label="🔍 Search Phage Database"]):focus-within {{
         border-color: #0284c7;
-        box-shadow: 0 12px 35px -5px var(--search-glow);
+        box-shadow: 0 10px 30px -4px var(--search-glow);
     }}
-    .hero-search-title {{
-        font-size: 0.98rem;
-        font-weight: 700;
-        color: var(--text-main);
-        margin-bottom: 4px;
+    div[data-testid="stTextInput"] label p {{
+        font-size: 1.05rem !important;
+        font-weight: 700 !important;
+        color: var(--text-main) !important;
+        margin-bottom: 6px !important;
+    }}
+    div[data-testid="stTextInput"] input {{
+        border-radius: 8px !important;
+        font-size: 0.95rem !important;
+        background: var(--stat-bg) !important;
+        color: var(--text-main) !important;
+        border: 1px solid var(--border-color) !important;
+    }}
+
+    /* Minimalist Theme Radio Switcher */
+    div[data-testid="stRadio"] {{
         display: flex;
-        align-items: center;
-        gap: 6px;
+        justify-content: flex-end;
     }}
-    .hero-search-subtitle {{
-        font-size: 0.78rem;
-        color: var(--text-muted);
-        margin-bottom: 10px;
+    div[data-testid="stRadio"] > div {{
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 0px !important;
+        background: var(--stat-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 9999px;
+        padding: 2px 4px;
+    }}
+    div[data-testid="stRadio"] label {{
+        padding: 2px 8px !important;
+        margin: 0 !important;
+        cursor: pointer !important;
+        font-size: 0.85rem !important;
+    }}
+    div[data-testid="stRadio"] label div[data-testid="stMarkdownContainer"] p {{
+        font-size: 0.88rem !important;
     }}
 
     /* Mini Stats Strip */
@@ -405,80 +428,47 @@ except Exception as e:
 
 
 # ---------------------------------------------------------
-# TOP MINIMAL HEADER BAR (Non-verbose, Clean Focus)
+# TOP MINIMAL HEADER BAR (Compact Brand + Ultra-Compact Theme Switcher)
 # ---------------------------------------------------------
-h_col1, h_col2 = st.columns([3, 1], vertical_alignment="center")
+h_col1, h_col2 = st.columns([4, 1.2], vertical_alignment="center")
 
 with h_col1:
     st.markdown("""
     <div style="display: flex; align-items: baseline; gap: 8px;">
         <span class="brand-title">🔭 PubScope</span>
-        <span style="font-size: 0.78rem; font-weight: 600; opacity: 0.7;">· Bacteriophage Database</span>
+        <span class="brand-sub">· Bacteriophage Database</span>
     </div>
-    <div class="brand-tagline">80 Open-Access publications · Curated traits & genomics</div>
     """, unsafe_allow_html=True)
 
 with h_col2:
-    theme_options = ["💻 System", "☀️ Light", "🌙 Dark"]
-    theme_idx = 0 if theme_mode == "System" else (1 if theme_mode == "Light" else 2)
-    new_theme = st.selectbox(
+    theme_icons = ["💻", "☀️", "🌙"]
+    icon_to_mode = {"💻": "System", "☀️": "Light", "🌙": "Dark"}
+    mode_to_icon = {"System": "💻", "Light": "☀️", "Dark": "🌙"}
+    current_icon = mode_to_icon.get(theme_mode, "💻")
+    
+    chosen_icon = st.radio(
         "Theme",
-        options=theme_options,
-        index=theme_idx,
+        options=theme_icons,
+        index=theme_icons.index(current_icon),
+        horizontal=True,
         label_visibility="collapsed",
-        key="theme_dropdown"
+        key="theme_radio_selector"
     )
-    selected_theme_clean = new_theme.split(" ")[-1]
-    if selected_theme_clean != theme_mode:
-        st.session_state["theme_mode"] = selected_theme_clean
+    if icon_to_mode[chosen_icon] != theme_mode:
+        st.session_state["theme_mode"] = icon_to_mode[chosen_icon]
         st.rerun()
 
 
 # ---------------------------------------------------------
-# HERO SEARCH AREA (Prominent, High-Focus Design)
+# UNIFIED SEARCH FIELD (Inside the '🔍 Search Phage Database' Box)
 # ---------------------------------------------------------
-st.markdown("""
-<div class="hero-search-card">
-    <div class="hero-search-title">🔍 Search Phage Database</div>
-    <div class="hero-search-subtitle">Instant search across phage names, host bacteria, accessions, DOIs, and morphology.</div>
-</div>
-""", unsafe_allow_html=True)
-
-# Search Input
 search_query = st.text_input(
-    "Search",
+    "🔍 Search Phage Database",
     value=st.session_state["search_input"],
-    placeholder="e.g. Escherichia, Sfin-2, Pseudomonas, sewage, MK972831, 10.3389...",
-    label_visibility="collapsed",
+    placeholder="Type phage name, host species (e.g. Escherichia, Pseudomonas), accession, DOI...",
     key="main_search_box"
 )
 st.session_state["search_input"] = search_query
-
-# Quick-Search Suggested Pills (Tactile & Fast)
-pill_col1, pill_col2 = st.columns([1, 5], vertical_alignment="center")
-with pill_col1:
-    st.caption("**Quick Filters:**")
-with pill_col2:
-    quick_filters = ["All", "E. coli", "P. aeruginosa", "K. pneumoniae", "S. aureus", "Lytic", "Sewage"]
-    p_cols = st.columns(len(quick_filters))
-    for i, tag in enumerate(quick_filters):
-        with p_cols[i]:
-            if st.button(tag, key=f"pill_{tag}", use_container_width=True):
-                if tag == "All":
-                    st.session_state["search_input"] = ""
-                elif tag == "E. coli":
-                    st.session_state["search_input"] = "Escherichia"
-                elif tag == "P. aeruginosa":
-                    st.session_state["search_input"] = "Pseudomonas aeruginosa"
-                elif tag == "K. pneumoniae":
-                    st.session_state["search_input"] = "Klebsiella"
-                elif tag == "S. aureus":
-                    st.session_state["search_input"] = "Staphylococcus"
-                elif tag == "Lytic":
-                    st.session_state["search_input"] = "Lytic"
-                elif tag == "Sewage":
-                    st.session_state["search_input"] = "sewage"
-                st.rerun()
 
 # Expandable Advanced Filters Drawer
 with st.expander("🎛️ Advanced Filters (Host, Lifestyle, Source, Size Slider)", expanded=False):
