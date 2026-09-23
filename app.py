@@ -43,6 +43,11 @@ if theme_mode == "Dark":
         --search-glow: rgba(56, 189, 248, 0.25);
         --pill-bg: #1e293b;
         --pill-border: #334155;
+        --tab-active: #38bdf8;
+        --tab-inactive: #94a3b8;
+        --btn-bg: #1c273e;
+        --btn-hover: #243049;
+        --placeholder-color: #cbd5e1;
     }
     .stApp {
         background-color: var(--bg-main) !important;
@@ -50,10 +55,6 @@ if theme_mode == "Dark":
     }
     header[data-testid="stHeader"] {
         background-color: var(--bg-main) !important;
-    }
-    div[data-testid="stExpander"] {
-        background-color: var(--bg-card) !important;
-        border-color: var(--border-color) !important;
     }
     """
     plotly_template = "plotly_dark"
@@ -70,6 +71,11 @@ elif theme_mode == "Light":
         --search-glow: rgba(0, 112, 243, 0.18);
         --pill-bg: #ffffff;
         --pill-border: #cbd5e1;
+        --tab-active: #0070F3;
+        --tab-inactive: #64748b;
+        --btn-bg: #f8fafc;
+        --btn-hover: #f1f5f9;
+        --placeholder-color: #64748b;
     }
     .stApp {
         background-color: var(--bg-main) !important;
@@ -90,6 +96,11 @@ else:  # System Default: Responsive to OS mode via media query
         --search-glow: rgba(0, 112, 243, 0.18);
         --pill-bg: #ffffff;
         --pill-border: #cbd5e1;
+        --tab-active: #0070F3;
+        --tab-inactive: #64748b;
+        --btn-bg: #f8fafc;
+        --btn-hover: #f1f5f9;
+        --placeholder-color: #64748b;
     }
     @media (prefers-color-scheme: dark) {
         :root {
@@ -103,6 +114,11 @@ else:  # System Default: Responsive to OS mode via media query
             --search-glow: rgba(56, 189, 248, 0.25);
             --pill-bg: #1e293b;
             --pill-border: #334155;
+            --tab-active: #38bdf8;
+            --tab-inactive: #94a3b8;
+            --btn-bg: #1c273e;
+            --btn-hover: #243049;
+            --placeholder-color: #cbd5e1;
         }
         .stApp {
             background-color: var(--bg-main) !important;
@@ -111,13 +127,9 @@ else:  # System Default: Responsive to OS mode via media query
         header[data-testid="stHeader"] {
             background-color: var(--bg-main) !important;
         }
-        div[data-testid="stExpander"] {
-            background-color: var(--bg-card) !important;
-            border-color: var(--border-color) !important;
-        }
     }
     """
-    plotly_template = "plotly_dark" if False else "plotly_white"
+    plotly_template = "plotly_dark" if theme_mode == "Dark" else "plotly_white"
 
 st.markdown(f"""
 <style>
@@ -180,7 +192,28 @@ st.markdown(f"""
         font-size: 0.95rem !important;
         background: var(--stat-bg) !important;
         color: var(--text-main) !important;
+        -webkit-text-fill-color: var(--text-main) !important;
         border: 1px solid var(--border-color) !important;
+    }}
+    div[data-testid="stTextInput"] input::placeholder,
+    div[data-baseweb="input"] input::placeholder,
+    input::placeholder {{
+        color: var(--placeholder-color) !important;
+        -webkit-text-fill-color: var(--placeholder-color) !important;
+        opacity: 1 !important;
+    }}
+    div[data-testid="stTextInput"] input::-webkit-input-placeholder,
+    div[data-baseweb="input"] input::-webkit-input-placeholder,
+    input::-webkit-input-placeholder {{
+        color: var(--placeholder-color) !important;
+        -webkit-text-fill-color: var(--placeholder-color) !important;
+        opacity: 1 !important;
+    }}
+    div[data-testid="stTextInput"] input::-moz-placeholder,
+    div[data-baseweb="input"] input::-moz-placeholder,
+    input::-moz-placeholder {{
+        color: var(--placeholder-color) !important;
+        opacity: 1 !important;
     }}
 
     /* Minimalist Theme Radio Switcher */
@@ -294,6 +327,114 @@ st.markdown(f"""
         font-size: 0.82rem;
         font-weight: 600;
         margin-top: 6px;
+    }}
+
+    /* GLOBAL TEXT VISIBILITY FIXES IN DARK / LIGHT MODES */
+    h1, h2, h3, h4, h5, h6,
+    [data-testid="stHeadingWithActionElements"] * {{
+        color: var(--text-main) !important;
+    }}
+    div[data-testid="stMarkdownContainer"] p,
+    div[data-testid="stMarkdownContainer"] span,
+    div[data-testid="stMarkdownContainer"] li {{
+        color: var(--text-main);
+    }}
+    .stCaption, [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p {{
+        color: var(--text-muted) !important;
+    }}
+
+    /* TABS VISIBILITY (Fixes inactive tab dark text on dark background) */
+    div[data-baseweb="tab-list"] {{
+        border-bottom: 1px solid var(--border-color) !important;
+    }}
+    button[data-baseweb="tab"] {{
+        color: var(--tab-inactive) !important;
+        font-weight: 500 !important;
+        background: transparent !important;
+    }}
+    button[data-baseweb="tab"]:hover {{
+        color: var(--text-main) !important;
+    }}
+    button[data-baseweb="tab"][aria-selected="true"] {{
+        color: var(--tab-active) !important;
+        font-weight: 700 !important;
+    }}
+    div[data-baseweb="tab-highlight"] {{
+        background-color: var(--tab-active) !important;
+    }}
+    div[data-baseweb="tab-border"] {{
+        background-color: var(--border-color) !important;
+    }}
+
+    /* BUTTONS FIX (Fixes white-on-white download & standard buttons) */
+    .stDownloadButton button,
+    .stButton button,
+    button[data-testid="stBaseButton-secondary"],
+    button[data-testid="stBaseButton-primary"] {{
+        background-color: var(--btn-bg) !important;
+        color: var(--text-main) !important;
+        border: 1.5px solid var(--border-color) !important;
+        font-weight: 600 !important;
+        border-radius: 10px !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        transition: all 0.15s ease !important;
+    }}
+    .stDownloadButton button:hover,
+    .stButton button:hover,
+    button[data-testid="stBaseButton-secondary"]:hover {{
+        background-color: var(--btn-hover) !important;
+        border-color: var(--tab-active) !important;
+        color: var(--tab-active) !important;
+    }}
+
+    /* EXPANDERS FIX (Fixes dark mode expander background and title) */
+    div[data-testid="stExpander"] {{
+        background-color: var(--bg-card) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 12px !important;
+    }}
+    div[data-testid="stExpander"] summary {{
+        color: var(--text-main) !important;
+    }}
+    div[data-testid="stExpander"] summary:hover {{
+        color: var(--tab-active) !important;
+    }}
+    div[data-testid="stExpander"] summary span {{
+        color: var(--text-main) !important;
+        font-weight: 600 !important;
+    }}
+    div[data-testid="stExpander"] [data-testid="stExpanderDetails"] {{
+        border-top: 1px solid var(--border-color) !important;
+    }}
+
+    /* SELECTBOXES & DROPDOWNS FIX */
+    div[data-baseweb="select"] > div {{
+        background-color: var(--stat-bg) !important;
+        border-color: var(--border-color) !important;
+        color: var(--text-main) !important;
+    }}
+    div[data-baseweb="select"] * {{
+        color: var(--text-main) !important;
+    }}
+    div[data-baseweb="popover"], ul[data-baseweb="menu"] {{
+        background-color: var(--bg-card) !important;
+        border: 1px solid var(--border-color) !important;
+    }}
+    li[data-baseweb="menu-item"] {{
+        color: var(--text-main) !important;
+        background-color: var(--bg-card) !important;
+    }}
+    li[data-baseweb="menu-item"]:hover {{
+        background-color: var(--stat-bg) !important;
+    }}
+
+    /* RADIO BUTTONS & SLIDERS */
+    div[data-testid="stRadio"] label p,
+    div[data-testid="stRadio"] label span {{
+        color: var(--text-main) !important;
+    }}
+    div[data-testid="stSlider"] label p {{
+        color: var(--text-main) !important;
     }}
 
     /* Media query adjustments for mobile */
