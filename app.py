@@ -25,6 +25,30 @@ if "search_input" not in st.session_state:
     st.session_state["search_input"] = ""
 
 # ---------------------------------------------------------
+# Client Device Detection (W3C Hints + User-Agent)
+# ---------------------------------------------------------
+def detect_client_is_mobile() -> bool:
+    try:
+        headers = st.context.headers
+        # 1. Check standard W3C Client Hint (Chrome, Edge, Android, etc.)
+        if headers.get("sec-ch-ua-mobile") == "?1":
+            return True
+        # 2. Check User-Agent header (iOS, Safari, Firefox, etc.)
+        ua = headers.get("user-agent", "").lower()
+        mobile_keywords = [
+            "mobile", "iphone", "android", "ipod", "webos",
+            "blackberry", "iemobile", "opera mini"
+        ]
+        if any(keyword in ua for keyword in mobile_keywords):
+            return True
+    except Exception:
+        pass
+    return False
+
+if "view_mode" not in st.session_state:
+    st.session_state["view_mode"] = "🤖 Auto"
+
+# ---------------------------------------------------------
 # Dynamic Theme CSS (System, Light, Dark)
 # ---------------------------------------------------------
 theme_mode = st.session_state["theme_mode"]
@@ -707,20 +731,41 @@ tab_table, tab_deepdive, tab_viz, tab_about = st.tabs([
 # TAB 1: Phage Directory (Cards vs Table)
 # ---------------------------------------------------------
 with tab_table:
-    header_col1, header_col2 = st.columns([1, 1], vertical_alignment="center")
+    is_client_mobile = detect_client_is_mobile()
+    
+    header_col1, header_col2 = st.columns([1.1, 1], vertical_alignment="center")
     with header_col1:
         st.subheader("Bacteriophage Directory")
     with header_col2:
-        view_mode = st.radio(
+        view_options = ["🤖 Auto", "📱 Cards", "🖥️ Table"]
+        current_setting = st.session_state.get("view_mode", "🤖 Auto")
+        if current_setting not in view_options:
+            current_setting = "🤖 Auto"
+            
+        selected_view = st.radio(
             "View Mode:",
-            ["📱 Mobile Cards", "🖥️ Full Table"],
+            options=view_options,
+            index=view_options.index(current_setting),
             horizontal=True,
-            help="Choose 'Mobile Cards' for phones and 'Full Table' for desktop spreadsheets"
+            help="Auto adapts: Compact Cards on mobile, Detailed Table on wide desktop screens.",
+            key="view_mode_radio"
         )
+        st.session_state["view_mode"] = selected_view
+
+    # Determine whether to show cards or table based on mode
+    if selected_view == "🤖 Auto":
+        show_cards = is_client_mobile
+        detected_label = "Mobile screen" if is_client_mobile else "Desktop / Wide screen"
+        detected_view_name = "Compact Cards" if is_client_mobile else "Detailed Table"
+        st.caption(f"🤖 **Adaptive View Active:** Detected *{detected_label}* → Showing **{detected_view_name}**.")
+    elif selected_view == "📱 Cards":
+        show_cards = True
+    else:
+        show_cards = False
 
     if filtered_df.empty:
         st.warning("No phages found matching the active search or filters. Try clicking 'All' or clearing filters.")
-    elif view_mode == "📱 Mobile Cards":
+    elif show_cards:
         PAGE_SIZE = 10
         total_items = len(filtered_df)
         total_pages = max(1, math.ceil(total_items / PAGE_SIZE))
