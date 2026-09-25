@@ -10,8 +10,8 @@ import urllib.parse
 # Page Configuration
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="PubScope",
-    page_icon="🩺",
+    page_title="PhageScope",
+    page_icon="🦠",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -598,8 +598,34 @@ h_col1, h_col2 = st.columns([4, 1.2], vertical_alignment="center")
 with h_col1:
     st.markdown("""
     <div style="display: flex; align-items: baseline; gap: 8px;">
-        <span class="brand-title">🔭 PubScope</span>
-        <span class="brand-sub">· Clinician Phage Sourcing Portal</span>
+        <span class="brand-title">
+            <svg width="30" height="30" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="color: #0284c7; flex-shrink: 0; vertical-align: middle;">
+                <!-- Icosahedral Capsid Head -->
+                <polygon points="18,2 25.5,6.5 25.5,14.5 18,18.5 10.5,14.5 10.5,6.5" fill="rgba(2, 132, 199, 0.2)" stroke-width="2" />
+                <polyline points="10.5,6.5 18,10.5 25.5,6.5" stroke-width="1.2" opacity="0.65" />
+                <polyline points="10.5,14.5 18,10.5 25.5,14.5" stroke-width="1.2" opacity="0.65" />
+                <line x1="18" y1="2" x2="18" y2="10.5" stroke-width="1.2" opacity="0.65" />
+                <line x1="18" y1="10.5" x2="18" y2="18.5" stroke-width="1.2" opacity="0.65" />
+                <!-- Collar / Neck Ring -->
+                <line x1="14.5" y1="19.5" x2="21.5" y2="19.5" stroke-width="2.4" />
+                <!-- Contractile Tail Sheath -->
+                <line x1="16.5" y1="20" x2="16.5" y2="27" stroke-width="1.8" />
+                <line x1="19.5" y1="20" x2="19.5" y2="27" stroke-width="1.8" />
+                <!-- Sheath Striations / Protein Discs -->
+                <line x1="15.5" y1="21.5" x2="20.5" y2="21.5" stroke-width="1.3" />
+                <line x1="15.5" y1="23.5" x2="20.5" y2="23.5" stroke-width="1.3" />
+                <line x1="15.5" y1="25.5" x2="20.5" y2="25.5" stroke-width="1.3" />
+                <!-- Baseplate & Injection Pin -->
+                <polygon points="13.5,27 22.5,27 23.5,28.5 12.5,28.5" fill="currentColor" stroke-width="1" />
+                <line x1="18" y1="28.5" x2="18" y2="30.5" stroke-width="1.8" />
+                <!-- Jointed Tail Fibers (Classic Knee-Bend Morphology) -->
+                <polyline points="13.5,28 7,26 3,34" stroke-width="1.9" />
+                <polyline points="14.5,28.5 10,29 7,34.5" stroke-width="1.6" />
+                <polyline points="22.5,28 29,26 33,34" stroke-width="1.9" />
+                <polyline points="21.5,28.5 26,29 29,34.5" stroke-width="1.6" />
+            </svg>
+            PhageScope
+        </span>
     </div>
     <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1px;">
         Search bacteriophage candidates tested against bacterial pathogens.
