@@ -4,25 +4,29 @@ import plotly.express as px
 import plotly.graph_objects as go
 import re
 import math
+import urllib.parse
 
 # ---------------------------------------------------------
 # Page Configuration
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="PubScope | Literature Dataset Explorer",
-    page_icon="🔭",
+    page_title="PubScope",
+    page_icon="🩺",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
 # ---------------------------------------------------------
-# Session State for Theme and Quick Search
+# Session State Initialization
 # ---------------------------------------------------------
 if "theme_mode" not in st.session_state:
     st.session_state["theme_mode"] = "System"
 
-if "search_input" not in st.session_state:
-    st.session_state["search_input"] = ""
+if "selected_query" not in st.session_state:
+    st.session_state["selected_query"] = None
+
+if "lytic_only" not in st.session_state:
+    st.session_state["lytic_only"] = False
 
 # ---------------------------------------------------------
 # Client Device Detection (W3C Hints + User-Agent)
@@ -30,10 +34,8 @@ if "search_input" not in st.session_state:
 def detect_client_is_mobile() -> bool:
     try:
         headers = st.context.headers
-        # 1. Check standard W3C Client Hint (Chrome, Edge, Android, etc.)
         if headers.get("sec-ch-ua-mobile") == "?1":
             return True
-        # 2. Check User-Agent header (iOS, Safari, Firefox, etc.)
         ua = headers.get("user-agent", "").lower()
         mobile_keywords = [
             "mobile", "iphone", "android", "ipod", "webos",
@@ -45,15 +47,11 @@ def detect_client_is_mobile() -> bool:
         pass
     return False
 
-if "view_mode" not in st.session_state:
-    st.session_state["view_mode"] = "🤖 Auto"
-
 # ---------------------------------------------------------
 # Dynamic Theme CSS (System, Light, Dark)
 # ---------------------------------------------------------
 theme_mode = st.session_state["theme_mode"]
 
-# CSS rules based on theme selection
 if theme_mode == "Dark":
     theme_css = """
     :root {
@@ -65,13 +63,14 @@ if theme_mode == "Dark":
         --stat-bg: #1c273e;
         --search-border: #38bdf8;
         --search-glow: rgba(56, 189, 248, 0.25);
-        --pill-bg: #1e293b;
-        --pill-border: #334155;
         --tab-active: #38bdf8;
         --tab-inactive: #94a3b8;
         --btn-bg: #1c273e;
         --btn-hover: #243049;
         --placeholder-color: #cbd5e1;
+        --accent-green: #22c55e;
+        --accent-green-bg: rgba(34, 197, 94, 0.15);
+        --card-highlight: #1e293b;
     }
     .stApp {
         background-color: var(--bg-main) !important;
@@ -93,13 +92,14 @@ elif theme_mode == "Light":
         --stat-bg: #f1f5f9;
         --search-border: #0070F3;
         --search-glow: rgba(0, 112, 243, 0.18);
-        --pill-bg: #ffffff;
-        --pill-border: #cbd5e1;
         --tab-active: #0070F3;
         --tab-inactive: #64748b;
-        --btn-bg: #f8fafc;
+        --btn-bg: #ffffff;
         --btn-hover: #f1f5f9;
         --placeholder-color: #64748b;
+        --accent-green: #15803d;
+        --accent-green-bg: #dcfce7;
+        --card-highlight: #f8fafc;
     }
     .stApp {
         background-color: var(--bg-main) !important;
@@ -107,7 +107,7 @@ elif theme_mode == "Light":
     }
     """
     plotly_template = "plotly_white"
-else:  # System Default: Responsive to OS mode via media query
+else:  # System Default
     theme_css = """
     :root {
         --bg-main: #f8fafc;
@@ -118,13 +118,14 @@ else:  # System Default: Responsive to OS mode via media query
         --stat-bg: #f1f5f9;
         --search-border: #0070F3;
         --search-glow: rgba(0, 112, 243, 0.18);
-        --pill-bg: #ffffff;
-        --pill-border: #cbd5e1;
         --tab-active: #0070F3;
         --tab-inactive: #64748b;
-        --btn-bg: #f8fafc;
+        --btn-bg: #ffffff;
         --btn-hover: #f1f5f9;
         --placeholder-color: #64748b;
+        --accent-green: #15803d;
+        --accent-green-bg: #dcfce7;
+        --card-highlight: #f8fafc;
     }
     @media (prefers-color-scheme: dark) {
         :root {
@@ -136,13 +137,14 @@ else:  # System Default: Responsive to OS mode via media query
             --stat-bg: #1c273e;
             --search-border: #38bdf8;
             --search-glow: rgba(56, 189, 248, 0.25);
-            --pill-bg: #1e293b;
-            --pill-border: #334155;
             --tab-active: #38bdf8;
             --tab-inactive: #94a3b8;
             --btn-bg: #1c273e;
             --btn-hover: #243049;
             --placeholder-color: #cbd5e1;
+            --accent-green: #22c55e;
+            --accent-green-bg: rgba(34, 197, 94, 0.15);
+            --card-highlight: #1e293b;
         }
         .stApp {
             background-color: var(--bg-main) !important;
@@ -165,14 +167,24 @@ st.markdown(f"""
         font-family: 'Inter', -apple-system, sans-serif;
     }}
     
+    /* Remove Massive Default Streamlit Top Whitespace */
+    .block-container,
+    div[data-testid="stMainBlockContainer"] {{
+        padding-top: 1.8rem !important;
+        padding-bottom: 2rem !important;
+    }}
+    header[data-testid="stHeader"] {{
+        background: transparent !important;
+        height: 2.5rem !important;
+    }}
+    
     /* Top Header Bar */
     .top-header-bar {{
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 4px 0 12px 0;
-        margin-bottom: 4px;
-        border-bottom: 1px solid var(--border-color);
+        padding: 4px 0 8px 0;
+        margin-bottom: 8px;
     }}
     .brand-title {{
         font-size: 1.45rem;
@@ -183,61 +195,42 @@ st.markdown(f"""
         gap: 8px;
         letter-spacing: -0.02em;
     }}
-    /* Ultra-compact Header */
     .brand-sub {{
         font-size: 0.8rem;
         font-weight: 500;
         color: var(--text-muted);
     }}
-    
-    /* UNIFIED SEARCH BOX WITH INTEGRATED LABEL */
-    div[data-testid="stTextInput"]:has(input[aria-label="🔍 Search Phage Database"]) {{
+
+    /* GOOGLE-STYLE UNIFIED SEARCH BOX */
+    div[data-testid="stSelectbox"]:has(div[data-baseweb="select"]) {{
         background: var(--bg-card);
         border: 2px solid var(--search-border);
-        border-radius: 14px;
-        padding: 12px 14px 14px 14px;
-        box-shadow: 0 8px 24px -4px var(--search-glow), 0 2px 4px rgba(0, 0, 0, 0.04);
-        margin-top: 6px;
-        margin-bottom: 8px;
+        border-radius: 16px;
+        padding: 4px 6px;
+        box-shadow: 0 8px 26px -4px var(--search-glow), 0 2px 4px rgba(0, 0, 0, 0.04);
+        margin-top: 4px;
+        margin-bottom: 12px;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }}
-    div[data-testid="stTextInput"]:has(input[aria-label="🔍 Search Phage Database"]):focus-within {{
+    div[data-testid="stSelectbox"]:has(div[data-baseweb="select"]):focus-within {{
         border-color: #0284c7;
-        box-shadow: 0 10px 30px -4px var(--search-glow);
+        box-shadow: 0 10px 32px -4px var(--search-glow);
     }}
-    div[data-testid="stTextInput"] label p {{
+    div[data-baseweb="select"] > div {{
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }}
+    div[data-baseweb="select"] input {{
         font-size: 1.05rem !important;
-        font-weight: 700 !important;
-        color: var(--text-main) !important;
-        margin-bottom: 6px !important;
-    }}
-    div[data-testid="stTextInput"] input {{
-        border-radius: 8px !important;
-        font-size: 0.95rem !important;
-        background: var(--stat-bg) !important;
         color: var(--text-main) !important;
         -webkit-text-fill-color: var(--text-main) !important;
-        border: 1px solid var(--border-color) !important;
     }}
-    div[data-testid="stTextInput"] input::placeholder,
-    div[data-baseweb="input"] input::placeholder,
-    input::placeholder {{
+    div[data-baseweb="select"] input::placeholder,
+    div[data-baseweb="select"] input::-webkit-input-placeholder {{
         color: var(--placeholder-color) !important;
         -webkit-text-fill-color: var(--placeholder-color) !important;
-        opacity: 1 !important;
-    }}
-    div[data-testid="stTextInput"] input::-webkit-input-placeholder,
-    div[data-baseweb="input"] input::-webkit-input-placeholder,
-    input::-webkit-input-placeholder {{
-        color: var(--placeholder-color) !important;
-        -webkit-text-fill-color: var(--placeholder-color) !important;
-        opacity: 1 !important;
-    }}
-    div[data-testid="stTextInput"] input::-moz-placeholder,
-    div[data-baseweb="input"] input::-moz-placeholder,
-    input::-moz-placeholder {{
-        color: var(--placeholder-color) !important;
-        opacity: 1 !important;
+        opacity: 0.85 !important;
     }}
 
     /* Minimalist Theme Radio Switcher */
@@ -262,98 +255,155 @@ st.markdown(f"""
     }}
     div[data-testid="stRadio"] label div[data-testid="stMarkdownContainer"] p {{
         font-size: 0.88rem !important;
+        color: var(--text-main) !important;
     }}
 
-    /* Mini Stats Strip */
-    .mini-stats-strip {{
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 8px;
-        margin-bottom: 16px;
-    }}
-    .mini-stat-pill {{
-        background: var(--stat-bg);
-        border: 1px solid var(--border-color);
-        color: var(--text-main);
-        border-radius: 9999px;
-        padding: 4px 12px;
-        font-size: 0.78rem;
-        font-weight: 500;
-    }}
-    .mini-stat-pill b {{
-        color: var(--text-main);
-        font-weight: 700;
-    }}
-
-    /* Phage Cards */
-    .mobile-phage-card {{
+    /* Clinician Action Card */
+    .clinician-card {{
         background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        border: 1.5px solid var(--border-color);
+        border-radius: 14px;
+        padding: 18px 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }}
-    .mobile-phage-card:hover {{
-        border-color: #94a3b8;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.07);
+    .clinician-card:hover {{
+        border-color: #0284c7;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }}
-    .phage-card-header {{
+    .card-top-row {{
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
+        gap: 12px;
         margin-bottom: 8px;
     }}
-    .phage-name-title {{
-        font-size: 1.15rem;
+    .card-phage-title {{
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--text-main);
+    }}
+    .target-pathogen-title {{
+        font-size: 0.95rem;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+    }}
+    .target-pathogen-title b {{
+        color: var(--text-main);
         font-weight: 700;
-        color: var(--text-main);
     }}
-    .phage-sub-title {{
-        font-size: 0.88rem;
-        color: var(--text-muted);
-        margin-bottom: 10px;
-    }}
-    .phage-stats-grid {{
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-        background: var(--stat-bg);
-        border-radius: 8px;
-        padding: 10px;
-        font-size: 0.82rem;
-        margin-bottom: 10px;
-    }}
-    .stat-item-label {{
-        color: var(--text-muted);
-        font-weight: 500;
-    }}
-    .stat-item-val {{
-        color: var(--text-main);
-        font-weight: 600;
-    }}
+
+    /* Badges */
     .badge {{
         display: inline-block;
-        padding: 3px 8px;
+        padding: 4px 10px;
         border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 600;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
     }}
-    .badge-lytic {{ background-color: rgba(22, 163, 74, 0.18); color: #16a34a; border: 1px solid rgba(22, 163, 74, 0.3); }}
-    .badge-lysogenic {{ background-color: rgba(147, 51, 234, 0.18); color: #a855f7; border: 1px solid rgba(147, 51, 234, 0.3); }}
-    .badge-other {{ background-color: rgba(148, 163, 184, 0.18); color: #64748b; border: 1px solid rgba(148, 163, 184, 0.3); }}
+    .badge-lytic {{ 
+        background-color: var(--accent-green-bg); 
+        color: var(--accent-green); 
+        border: 1px solid var(--accent-green); 
+    }}
+    .badge-other {{ 
+        background-color: rgba(148, 163, 184, 0.18); 
+        color: #64748b; 
+        border: 1px solid rgba(148, 163, 184, 0.3); 
+    }}
 
-    .action-links {{
+    /* Clinical Viability Grid */
+    .clinical-metrics-grid {{
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        background: var(--stat-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 10px 14px;
+        margin-bottom: 14px;
+    }}
+    .c-metric-item {{
         display: flex;
-        gap: 12px;
-        font-size: 0.82rem;
+        flex-direction: column;
+    }}
+    .c-metric-label {{
+        font-size: 0.72rem;
         font-weight: 600;
-        margin-top: 6px;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        letter-spacing: 0.04em;
+    }}
+    .c-metric-val {{
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-top: 1px;
     }}
 
-    /* GLOBAL TEXT VISIBILITY FIXES IN DARK / LIGHT MODES */
+    /* Sourcing & Provenance Section */
+    .sourcing-box {{
+        background: var(--card-highlight);
+        border: 1px dashed var(--border-color);
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin-bottom: 12px;
+        font-size: 0.85rem;
+    }}
+    .sourcing-row {{
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+    }}
+    .sourcing-label {{
+        font-weight: 600;
+        color: var(--text-muted);
+    }}
+    .sourcing-val {{
+        font-weight: 600;
+        color: var(--text-main);
+        text-align: right;
+    }}
+
+    /* Action Buttons inside Card */
+    .contact-cta-button {{
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background-color: #0284c7;
+        color: #ffffff !important;
+        font-weight: 700;
+        font-size: 0.85rem;
+        padding: 8px 14px;
+        border-radius: 8px;
+        text-decoration: none !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: background-color 0.15s ease;
+    }}
+    .contact-cta-button:hover {{
+        background-color: #0369a1;
+    }}
+    .secondary-link-btn {{
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background-color: var(--btn-bg);
+        color: var(--text-main) !important;
+        border: 1px solid var(--border-color);
+        font-weight: 600;
+        font-size: 0.85rem;
+        padding: 8px 14px;
+        border-radius: 8px;
+        text-decoration: none !important;
+        transition: border-color 0.15s ease;
+    }}
+    .secondary-link-btn:hover {{
+        border-color: #0284c7;
+    }}
+
+    /* GLOBAL TEXT VISIBILITY FIXES */
     h1, h2, h3, h4, h5, h6,
     [data-testid="stHeadingWithActionElements"] * {{
         color: var(--text-main) !important;
@@ -367,30 +417,7 @@ st.markdown(f"""
         color: var(--text-muted) !important;
     }}
 
-    /* TABS VISIBILITY (Fixes inactive tab dark text on dark background) */
-    div[data-baseweb="tab-list"] {{
-        border-bottom: 1px solid var(--border-color) !important;
-    }}
-    button[data-baseweb="tab"] {{
-        color: var(--tab-inactive) !important;
-        font-weight: 500 !important;
-        background: transparent !important;
-    }}
-    button[data-baseweb="tab"]:hover {{
-        color: var(--text-main) !important;
-    }}
-    button[data-baseweb="tab"][aria-selected="true"] {{
-        color: var(--tab-active) !important;
-        font-weight: 700 !important;
-    }}
-    div[data-baseweb="tab-highlight"] {{
-        background-color: var(--tab-active) !important;
-    }}
-    div[data-baseweb="tab-border"] {{
-        background-color: var(--border-color) !important;
-    }}
-
-    /* BUTTONS FIX (Fixes white-on-white download & standard buttons) */
+    /* BUTTONS FIX */
     .stDownloadButton button,
     .stButton button,
     button[data-testid="stBaseButton-secondary"],
@@ -400,7 +427,6 @@ st.markdown(f"""
         border: 1.5px solid var(--border-color) !important;
         font-weight: 600 !important;
         border-radius: 10px !important;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
         transition: all 0.15s ease !important;
     }}
     .stDownloadButton button:hover,
@@ -411,7 +437,7 @@ st.markdown(f"""
         color: var(--tab-active) !important;
     }}
 
-    /* EXPANDERS FIX (Fixes dark mode expander background and title) */
+    /* EXPANDERS FIX */
     div[data-testid="stExpander"] {{
         background-color: var(--bg-card) !important;
         border: 1px solid var(--border-color) !important;
@@ -419,9 +445,6 @@ st.markdown(f"""
     }}
     div[data-testid="stExpander"] summary {{
         color: var(--text-main) !important;
-    }}
-    div[data-testid="stExpander"] summary:hover {{
-        color: var(--tab-active) !important;
     }}
     div[data-testid="stExpander"] summary span {{
         color: var(--text-main) !important;
@@ -431,57 +454,25 @@ st.markdown(f"""
         border-top: 1px solid var(--border-color) !important;
     }}
 
-    /* SELECTBOXES & DROPDOWNS FIX */
-    div[data-baseweb="select"] > div {{
-        background-color: var(--stat-bg) !important;
-        border-color: var(--border-color) !important;
-        color: var(--text-main) !important;
-    }}
-    div[data-baseweb="select"] * {{
-        color: var(--text-main) !important;
-    }}
-    div[data-baseweb="popover"], ul[data-baseweb="menu"] {{
-        background-color: var(--bg-card) !important;
-        border: 1px solid var(--border-color) !important;
-    }}
-    li[data-baseweb="menu-item"] {{
-        color: var(--text-main) !important;
-        background-color: var(--bg-card) !important;
-    }}
-    li[data-baseweb="menu-item"]:hover {{
-        background-color: var(--stat-bg) !important;
-    }}
-
-    /* RADIO BUTTONS & SLIDERS */
-    div[data-testid="stRadio"] label p,
-    div[data-testid="stRadio"] label span {{
-        color: var(--text-main) !important;
-    }}
-    div[data-testid="stSlider"] label p {{
-        color: var(--text-main) !important;
-    }}
-
-    /* Media query adjustments for mobile */
+    /* Mobile media query */
     @media (max-width: 768px) {{
+        .clinical-metrics-grid {{
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+        }}
         .brand-title {{
             font-size: 1.25rem !important;
         }}
-        .hero-search-card {{
-            padding: 12px 14px 10px 14px !important;
-            border-radius: 12px !important;
+        .card-top-row {{
+            flex-direction: column !important;
+            align-items: flex-start !important;
         }}
-        .mobile-phage-card {{
-            padding: 12px !important;
+        .sourcing-row {{
+            flex-direction: column !important;
+            align-items: flex-start !important;
         }}
-        .phage-name-title {{
-            font-size: 1.05rem !important;
-        }}
-        div[data-baseweb="tab-list"] {{
-            gap: 2px !important;
-        }}
-        button[data-baseweb="tab"] {{
-            padding: 6px 8px !important;
-            font-size: 0.8rem !important;
+        .sourcing-val {{
+            text-align: left !important;
         }}
     }}
 </style>
@@ -582,6 +573,13 @@ def load_data(csv_path: str = "LitSift_Extracted_Dataset.csv"):
     df["DOI_URL"] = df["Article DOI"].apply(format_doi_url)
     df["NCBI_URL"] = df["Phage Genome Accession/Bioproject"].apply(extract_accession_link)
     
+    # Check for direct email column if enriched in the future
+    email_col = next((c for c in df.columns if "email" in c.lower() or "author email" in c.lower()), None)
+    if email_col:
+        df["Contact_Email"] = df[email_col].replace(["nan", "None", "-", "Not reported"], None)
+    else:
+        df["Contact_Email"] = None
+
     return df
 
 # Load the dataset
@@ -593,7 +591,7 @@ except Exception as e:
 
 
 # ---------------------------------------------------------
-# TOP MINIMAL HEADER BAR (Compact Brand + Ultra-Compact Theme Switcher)
+# TOP MINIMAL HEADER BAR
 # ---------------------------------------------------------
 h_col1, h_col2 = st.columns([4, 1.2], vertical_alignment="center")
 
@@ -601,7 +599,10 @@ with h_col1:
     st.markdown("""
     <div style="display: flex; align-items: baseline; gap: 8px;">
         <span class="brand-title">🔭 PubScope</span>
-        <span class="brand-sub">· Bacteriophage Database</span>
+        <span class="brand-sub">· Clinician Phage Sourcing Portal</span>
+    </div>
+    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1px;">
+        Search bacteriophage candidates tested against bacterial pathogens.
     </div>
     """, unsafe_allow_html=True)
 
@@ -623,408 +624,128 @@ with h_col2:
         st.session_state["theme_mode"] = icon_to_mode[chosen_icon]
         st.rerun()
 
+st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+
 
 # ---------------------------------------------------------
-# UNIFIED SEARCH FIELD (Inside the '🔍 Search Phage Database' Box)
+# AUTO-SUGGESTION KEYWORD DICTIONARY
 # ---------------------------------------------------------
-search_query = st.text_input(
-    "🔍 Search Phage Database",
-    value=st.session_state["search_input"],
-    placeholder="Type phage name, host species (e.g. Escherichia, Pseudomonas), accession, DOI...",
-    key="main_search_box"
+# Compile high-value search suggestions (Hosts, Phages, Key Locations)
+all_hosts = sorted([h for h in df["Host Bacterial Species"].unique() if h != "Not reported"])
+all_phages = sorted([p for p in df["Phage Name"].unique() if p != "Not reported"])
+key_locations = sorted([loc for loc in df["Place of Sample collection"].unique() if loc != "Not reported"])
+
+search_suggestions = []
+# 1. Hosts first (primary clinical intent)
+for h in all_hosts:
+    count = (df["Host Bacterial Species"] == h).sum()
+    search_suggestions.append(f"{h}")
+
+# 2. Phage names
+for p in all_phages:
+    if p not in search_suggestions:
+        search_suggestions.append(p)
+
+# ---------------------------------------------------------
+# GOOGLE-STYLE UNIFIED AUTO-COMPLETE SEARCH BOX
+# ---------------------------------------------------------
+search_choice = st.selectbox(
+    "Search Pathogen or Phage",
+    options=search_suggestions,
+    index=search_suggestions.index(st.session_state["selected_query"]) if st.session_state["selected_query"] in search_suggestions else None,
+    placeholder="🔍 Type pathogen (e.g. Pseudomonas aeruginosa, Klebsiella, E. coli), phage name, or accession...",
+    accept_new_options=True,
+    filter_mode="fuzzy",
+    label_visibility="collapsed",
+    key="autocomplete_search"
 )
-st.session_state["search_input"] = search_query
 
-# Expandable Advanced Filters Drawer
-with st.expander("🎛️ Advanced Filters (Host, Lifestyle, Source, Size Slider)", expanded=False):
-    f_col1, f_col2 = st.columns(2)
-    with f_col1:
-        all_hosts = sorted([h for h in df["Host Bacterial Species"].unique() if h != "Not reported"])
-        selected_hosts = st.multiselect(
-            "🧫 Host Bacterial Species",
-            options=all_hosts,
-            default=[],
-            help="Select one or more bacterial hosts"
-        )
-        all_types = sorted(df["Phage_Type_Clean"].unique().tolist())
-        selected_types = st.multiselect(
-            "⚡ Phage Lifestyle",
-            options=all_types,
-            default=[],
-            help="Select lifecycle (Lytic, Lysogenic, Engineered)"
-        )
-    with f_col2:
-        sample_sources = sorted([s for s in df["Phage isolation Sample"].unique() if s != "Not reported"])
-        selected_sample_type = st.multiselect(
-            "💧 Isolation Sample Source",
-            options=sample_sources,
-            default=[],
-            help="Filter by environment (sewage, water, poultry, etc.)"
-        )
-        valid_sizes = df["Genome_Size_bp_num"].dropna()
-        if not valid_sizes.empty:
-            min_size = int(valid_sizes.min())
-            max_size = int(valid_sizes.max())
-            size_range = st.slider(
-                "📏 Genome Size Range (bp)",
-                min_value=min_size,
-                max_value=max_size,
-                value=(min_size, max_size),
-                step=5000
-            )
-        else:
-            size_range = None
+# Update session state query
+if search_choice != st.session_state["selected_query"]:
+    st.session_state["selected_query"] = search_choice
 
-    if st.button("🔄 Clear All Filters & Search", key="reset_filters"):
-        st.session_state["search_input"] = ""
+active_query = st.session_state["selected_query"]
+
+# Quick Common Pathogen Chips (ESKAPE Pathogens)
+chip_cols = st.columns([1, 1.4, 1.4, 1.5, 1.3, 1.2, 1.2])
+with chip_cols[0]:
+    st.caption("**Popular:**")
+with chip_cols[1]:
+    if st.button("P. aeruginosa", key="chip_pa", use_container_width=True):
+        st.session_state["selected_query"] = "Pseudomonas aeruginosa"
+        st.rerun()
+with chip_cols[2]:
+    if st.button("K. pneumoniae", key="chip_kp", use_container_width=True):
+        st.session_state["selected_query"] = "Klebsiella pneumoniae"
+        st.rerun()
+with chip_cols[3]:
+    if st.button("A. baumannii", key="chip_ab", use_container_width=True):
+        st.session_state["selected_query"] = "Acinetobacter"
+        st.rerun()
+with chip_cols[4]:
+    if st.button("S. aureus", key="chip_sa", use_container_width=True):
+        st.session_state["selected_query"] = "Staphylococcus aureus"
+        st.rerun()
+with chip_cols[5]:
+    if st.button("E. coli", key="chip_ec", use_container_width=True):
+        st.session_state["selected_query"] = "Escherichia coli"
+        st.rerun()
+with chip_cols[6]:
+    if st.button("Show All", key="chip_all", use_container_width=True):
+        st.session_state["selected_query"] = None
         st.rerun()
 
-# Apply filter logic
+
+# ---------------------------------------------------------
+# Filter Dataset
+# ---------------------------------------------------------
 filtered_df = df.copy()
 
-if search_query:
-    q = search_query.lower()
-    match_mask = filtered_df.apply(lambda row: row.astype(str).str.lower().str.contains(q, regex=False).any(), axis=1)
+if active_query:
+    q = active_query.lower().strip()
+    match_mask = filtered_df.apply(
+        lambda row: row.astype(str).str.lower().str.contains(q, regex=False).any(),
+        axis=1
+    )
     filtered_df = filtered_df[match_mask]
 
-if selected_hosts:
-    filtered_df = filtered_df[filtered_df["Host Bacterial Species"].isin(selected_hosts)]
-
-if selected_types:
-    filtered_df = filtered_df[filtered_df["Phage_Type_Clean"].isin(selected_types)]
-
-if selected_sample_type:
-    filtered_df = filtered_df[filtered_df["Phage isolation Sample"].isin(selected_sample_type)]
-
-if size_range and size_range != (min_size, max_size):
-    filtered_df = filtered_df[
-        (filtered_df["Genome_Size_bp_num"] >= size_range[0]) & 
-        (filtered_df["Genome_Size_bp_num"] <= size_range[1])
-    ]
-
-# Mini Stats Strip (Compact & Zero clutter)
-n_hosts = filtered_df["Host Bacterial Species"].nunique()
-n_lytic = (filtered_df["Phage_Type_Clean"] == "Lytic").sum()
-n_sequenced = filtered_df["Genome_Size_bp_num"].notna().sum()
-
-st.markdown(f"""
-<div class="mini-stats-strip">
-    <span class="mini-stat-pill">📋 Records: <b>{len(filtered_df)} / {len(df)}</b></span>
-    <span class="mini-stat-pill">🧫 Target Hosts: <b>{n_hosts}</b></span>
-    <span class="mini-stat-pill">⚡ Lytic: <b>{n_lytic}</b></span>
-    <span class="mini-stat-pill">🧬 Sequenced: <b>{n_sequenced}</b></span>
-</div>
-""", unsafe_allow_html=True)
-
-
-# ---------------------------------------------------------
-# Tabs Navigation
-# ---------------------------------------------------------
-tab_table, tab_deepdive, tab_viz, tab_about = st.tabs([
-    "📋 Phage Directory", 
-    "🔍 Deep-Dive Card", 
-    "📊 Analytics", 
-    "ℹ️ About"
-])
-
-# ---------------------------------------------------------
-# TAB 1: Phage Directory (Cards vs Table)
-# ---------------------------------------------------------
-with tab_table:
-    is_client_mobile = detect_client_is_mobile()
-    
-    header_col1, header_col2 = st.columns([1.1, 1], vertical_alignment="center")
-    with header_col1:
-        st.subheader("Bacteriophage Directory")
-    with header_col2:
-        view_options = ["🤖 Auto", "📱 Cards", "🖥️ Table"]
-        current_setting = st.session_state.get("view_mode", "🤖 Auto")
-        if current_setting not in view_options:
-            current_setting = "🤖 Auto"
-            
-        selected_view = st.radio(
-            "View Mode:",
-            options=view_options,
-            index=view_options.index(current_setting),
-            horizontal=True,
-            help="Auto adapts: Compact Cards on mobile, Detailed Table on wide desktop screens.",
-            key="view_mode_radio"
-        )
-        st.session_state["view_mode"] = selected_view
-
-    # Determine whether to show cards or table based on mode
-    if selected_view == "🤖 Auto":
-        show_cards = is_client_mobile
-        detected_label = "Mobile screen" if is_client_mobile else "Desktop / Wide screen"
-        detected_view_name = "Compact Cards" if is_client_mobile else "Detailed Table"
-        st.caption(f"🤖 **Adaptive View Active:** Detected *{detected_label}* → Showing **{detected_view_name}**.")
-    elif selected_view == "📱 Cards":
-        show_cards = True
+# Clinical safety filter: Option to show only strictly lytic phages
+filter_bar1, filter_bar2 = st.columns([3, 1], vertical_alignment="center")
+with filter_bar1:
+    if active_query:
+        st.markdown(f"Showing **{len(filtered_df)}** candidate phages for: `\"{active_query}\"`")
     else:
-        show_cards = False
+        st.markdown(f"Showing all **{len(filtered_df)}** phages in database across 80 Open-Access publications")
 
-    if filtered_df.empty:
-        st.warning("No phages found matching the active search or filters. Try clicking 'All' or clearing filters.")
-    elif show_cards:
-        PAGE_SIZE = 10
-        total_items = len(filtered_df)
-        total_pages = max(1, math.ceil(total_items / PAGE_SIZE))
-        
-        pag_col1, pag_col2 = st.columns([2, 1], vertical_alignment="center")
-        with pag_col1:
-            st.caption(f"Showing {total_items} phages (Page 10 records per page)")
-        with pag_col2:
-            current_page = st.selectbox(
-                "Page",
-                options=list(range(1, total_pages + 1)),
-                format_func=lambda x: f"Page {x} of {total_pages}",
-                label_visibility="collapsed"
-            )
-
-        start_idx = (current_page - 1) * PAGE_SIZE
-        end_idx = min(start_idx + PAGE_SIZE, total_items)
-        page_records = filtered_df.iloc[start_idx:end_idx]
-
-        for _, row in page_records.iterrows():
-            badge_class = "badge-lytic" if row["Phage_Type_Clean"] == "Lytic" else ("badge-lysogenic" if "Lysogenic" in row["Phage_Type_Clean"] else "badge-other")
-            
-            phage_name = row.get("Phage Name", "Unknown Phage")
-            host_name = row.get("Host Bacterial Species", "Unspecified Host")
-            p_type = row.get("Phage_Type_Clean", "Not reported")
-            genome_size = row.get("Phage Genome size (bp)", "Not reported")
-            gc_content = row.get("Phage GC content (%)", "Not reported")
-            accession = row.get("Phage Genome Accession/Bioproject", "Not reported")
-            sample_src = row.get("Phage isolation Sample", "Not reported")
-            doi_link = row.get("DOI_URL")
-            ncbi_link = row.get("NCBI_URL")
-
-            st.markdown(f"""
-            <div class="mobile-phage-card">
-                <div class="phage-card-header">
-                    <div>
-                        <div class="phage-name-title">🦠 {phage_name}</div>
-                        <div class="phage-sub-title">Host: <b>{host_name}</b></div>
-                    </div>
-                    <span class="badge {badge_class}">{p_type}</span>
-                </div>
-                <div class="phage-stats-grid">
-                    <div><span class="stat-item-label">Genome Size:</span> <span class="stat-item-val">{genome_size}</span></div>
-                    <div><span class="stat-item-label">GC Content:</span> <span class="stat-item-val">{gc_content}</span></div>
-                    <div><span class="stat-item-label">Accession:</span> <span class="stat-item-val">{accession[:25]}</span></div>
-                    <div><span class="stat-item-label">Source:</span> <span class="stat-item-val">{sample_src[:22]}</span></div>
-                </div>
-                <div class="action-links">
-                    {f'<a href="{ncbi_link}" target="_blank" style="color: #0284c7; text-decoration: none;">🔗 NCBI Accession ↗</a>' if ncbi_link else '<span style="color: #94a3b8;">No NCBI Link</span>'}
-                    {f'<a href="{doi_link}" target="_blank" style="color: #0284c7; text-decoration: none;">📄 Paper DOI ↗</a>' if doi_link else ''}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            with st.expander(f"🔬 More Traits for {phage_name}", expanded=False):
-                d1, d2 = st.columns(2)
-                with d1:
-                    st.markdown(f"**Taxonomy:** {row.get('Phage Taxonomy', 'Not reported')}")
-                    st.markdown(f"**Capsid / TEM:** {row.get('Phage TEM dimensions/Capsid morphology', 'Not reported')}")
-                    plaque_val = row.get("Phage's Plaque characteristics/Shape", 'Not reported')
-                    st.markdown(f"**Plaques:** {plaque_val}")
-                with d2:
-                    st.markdown(f"**Optimal Temp:** {row.get('Optimal Temperature (°C)', 'Not reported')}")
-                    st.markdown(f"**Optimal pH:** {row.get('Optimal pH', 'Not reported')}")
-                    st.markdown(f"**Burst Size:** {row.get('Burst size (phage/infected bacterium)', 'Not reported')}")
-                    st.markdown(f"**Latent Period:** {row.get('Latent period (min)', 'Not reported')}")
-                    st.markdown(f"**Optimal MOI:** {row.get('Optimal MOI', 'Not reported')}")
-
-    else:
-        column_config = {
-            "DOI_URL": st.column_config.LinkColumn(
-                "Article DOI Link",
-                help="Direct link to original research paper",
-                validate=r"^https://",
-                display_text=r"https://doi.org/(.*)"
-            ),
-            "NCBI_URL": st.column_config.LinkColumn(
-                "NCBI Accession Link",
-                help="Direct link to GenBank or BioProject",
-                validate=r"^https://",
-                display_text="View on NCBI ↗"
-            ),
-            "Genome_Size_bp_num": st.column_config.NumberColumn(
-                "Genome Size (bp)",
-                format="%d bp"
-            ),
-            "GC_Content_num": st.column_config.NumberColumn(
-                "GC Content (%)",
-                format="%.2f %%"
-            )
-        }
-
-        display_cols = [
-            "Phage Name",
-            "Host Bacterial Species",
-            "Phage_Type_Clean",
-            "Phage Genome Accession/Bioproject",
-            "NCBI_URL",
-            "Genome_Size_bp_num",
-            "GC_Content_num",
-            "Phage Taxonomy",
-            "Place of Sample collection",
-            "Phage isolation Sample",
-            "DOI_URL",
-            "Optimal Temperature (°C)",
-            "Optimal pH",
-            "Optimal MOI",
-            "Latent period (min)",
-            "Burst size (phage/infected bacterium)",
-        ]
-        available_display_cols = [c for c in display_cols if c in filtered_df.columns]
-
-        st.dataframe(
-            filtered_df[available_display_cols],
-            column_config=column_config,
-            use_container_width=True,
-            hide_index=True,
-            height=500
-        )
-
-    # Export Buttons
-    st.markdown("<br>", unsafe_allow_html=True)
-    col_dl1, col_dl2 = st.columns(2)
-    with col_dl1:
-        csv_filtered = filtered_df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Download Filtered CSV",
-            data=csv_filtered,
-            file_name="PubScope_filtered_phages.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
-    with col_dl2:
-        csv_all = df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📦 Download Complete CSV",
-            data=csv_all,
-            file_name="LitSift_Complete_Dataset.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
+with filter_bar2:
+    lytic_toggle = st.toggle("🛡️ Only Lytic (Therapeutic)", value=st.session_state["lytic_only"], key="lytic_checkbox")
+    st.session_state["lytic_only"] = lytic_toggle
+    if lytic_toggle:
+        filtered_df = filtered_df[filtered_df["Phage_Type_Clean"] == "Lytic"]
 
 
 # ---------------------------------------------------------
-# TAB 2: Phage Deep Dive (Inspector Card)
+# RESEARCHER DETAILS & VISUAL ANALYTICS (Single-Click Expanders)
 # ---------------------------------------------------------
-with tab_deepdive:
-    st.subheader("🔍 Phage Profile Inspector")
-    st.caption("Select a specific bacteriophage to view its complete physiological, genomic, and morphological card.")
-
-    if not filtered_df.empty:
-        phage_names = filtered_df["Phage Name"].dropna().unique().tolist()
-        selected_phage_name = st.selectbox(
-            "Select Phage:",
-            options=phage_names,
-            index=0
-        )
-        
-        phage_rows = filtered_df[filtered_df["Phage Name"] == selected_phage_name]
-        
-        for _, p in phage_rows.iterrows():
-            st.markdown(f"""
-            <div class="mobile-phage-card" style="padding: 20px; border-left: 4px solid #0070F3;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <div style="font-size: 1.35rem; font-weight: 700; color: var(--text-main);">🦠 {p.get('Phage Name', 'N/A')}</div>
-                    <span class="badge badge-lytic">{p.get('Phage_Type_Clean', 'Unknown')}</span>
-                </div>
-                <div style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 12px;">
-                    Target Host: <b style="color: var(--text-main);">{p.get('Host Bacterial Species', 'N/A')}</b>
-                    {f" | Challenge Host: <i>{p.get('Experimental / Challenge Host')}</i>" if p.get('Experimental / Challenge Host') != 'Not reported' else ''}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown("##### 🧬 Genomic Profile")
-                st.markdown(f"**Accession / BioProject:** {p.get('Phage Genome Accession/Bioproject', 'Not reported')}")
-                if p.get("NCBI_URL"):
-                    st.markdown(f"[🔗 View on NCBI Nuccore / BioProject]({p['NCBI_URL']})")
-                st.markdown(f"**Genome Size:** {p.get('Phage Genome size (bp)', 'Not reported')}")
-                st.markdown(f"**GC Content:** {p.get('Phage GC content (%)', 'Not reported')}")
-                st.markdown(f"**Taxonomy:** {p.get('Phage Taxonomy', 'Not reported')}")
-
-            with c2:
-                st.markdown("##### 🔬 Morphology & Plaque")
-                st.markdown(f"**TEM Dimensions / Capsid:** {p.get('Phage TEM dimensions/Capsid morphology', 'Not reported')}")
-                st.markdown(f"**Structural Similarity:** {p.get('Phage TEM shows structural similarity with', 'Not reported')}")
-                plaque_char = p.get("Phage's Plaque characteristics/Shape", 'Not reported')
-                st.markdown(f"**Plaque Characteristics:** {plaque_char}")
-
-            st.markdown("---")
-            c3, c4 = st.columns(2)
-            with c3:
-                st.markdown("##### ⚡ Kinetics & Stability")
-                st.markdown(f"**Optimal MOI:** {p.get('Optimal MOI', 'Not reported')}")
-                st.markdown(f"**Latent Period:** {p.get('Latent period (min)', 'Not reported')}")
-                st.markdown(f"**Burst Size:** {p.get('Burst size (phage/infected bacterium)', 'Not reported')}")
-                st.markdown(f"**Optimal Temperature:** {p.get('Optimal Temperature (°C)', 'Not reported')}")
-                st.markdown(f"**Optimal pH:** {p.get('Optimal pH', 'Not reported')}")
-
-            with c4:
-                st.markdown("##### 📍 Origin & Publication")
-                st.markdown(f"**Sample Type:** {p.get('Phage isolation Sample', 'Not reported')}")
-                st.markdown(f"**Location:** {p.get('Place of Sample collection', 'Not reported')}")
-                st.markdown(f"**Article DOI:** `{p.get('Article DOI', 'Not reported')}`")
-                if p.get("DOI_URL"):
-                    st.markdown(f"[🔗 Open Publication DOI]({p['DOI_URL']})")
-            
-            if len(phage_rows) > 1:
-                st.markdown("---")
-    else:
-        st.info("No phages found matching the active filters.")
-
-
-# ---------------------------------------------------------
-# TAB 3: Visual Analytics
-# ---------------------------------------------------------
-with tab_viz:
-    st.subheader("Visual Analytics & Distributions")
-
-    top_hosts = filtered_df["Host Bacterial Species"].value_counts().head(10).reset_index()
+with st.expander("📊 View Cohort Analytics & Distributions (for researchers)", expanded=False):
+    st.caption("Aggregate insights across the matching bacteriophages.")
+    top_hosts = filtered_df["Host Bacterial Species"].value_counts().head(8).reset_index()
     top_hosts.columns = ["Host Species", "Count"]
-    
+
     fig_hosts = px.bar(
         top_hosts,
         x="Count",
         y="Host Species",
         orientation="h",
-        title="Top 10 Bacterial Hosts in Filtered Set",
+        title="Bacterial Host Frequency",
         color="Count",
         color_continuous_scale="Blues",
         template=plotly_template
     )
-    fig_hosts.update_layout(
-        yaxis=dict(autorange="reversed"),
-        margin=dict(l=10, r=10, t=35, b=20),
-        height=380,
-    )
+    fig_hosts.update_layout(yaxis=dict(autorange="reversed"), margin=dict(l=10, r=10, t=35, b=20), height=300)
     st.plotly_chart(fig_hosts, use_container_width=True)
 
-    type_counts = filtered_df["Phage_Type_Clean"].value_counts().reset_index()
-    type_counts.columns = ["Lifestyle", "Count"]
-
-    fig_type = px.pie(
-        type_counts,
-        names="Lifestyle",
-        values="Count",
-        title="Phage Lifestyle Distribution",
-        hole=0.45,
-        color_discrete_sequence=px.colors.qualitative.Pastel,
-        template=plotly_template
-    )
-    fig_type.update_layout(margin=dict(l=10, r=10, t=35, b=20), height=340)
-    st.plotly_chart(fig_type, use_container_width=True)
-
-    st.markdown("##### 🧬 Genome Size vs. GC Content (%)")
     scatter_df = filtered_df.dropna(subset=["Genome_Size_bp_num", "GC_Content_num"])
-
     if not scatter_df.empty:
         fig_scatter = px.scatter(
             scatter_df,
@@ -1032,41 +753,185 @@ with tab_viz:
             y="GC_Content_num",
             color="Host Bacterial Species",
             hover_name="Phage Name",
-            hover_data=["Phage Taxonomy", "Phage Genome Accession/Bioproject"],
-            labels={
-                "Genome_Size_bp_num": "Genome Size (bp)",
-                "GC_Content_num": "GC Content (%)",
-                "Host Bacterial Species": "Host"
-            },
-            title="Genome Size vs GC Content (Hover/Tap to inspect)",
-            height=440,
+            labels={"Genome_Size_bp_num": "Genome (bp)", "GC_Content_num": "GC (%)"},
+            title="Genome Size vs GC Content (%)",
+            height=340,
             template=plotly_template
         )
-        fig_scatter.update_layout(margin=dict(l=10, r=10, t=35, b=20), legend=dict(orientation="h", y=-0.2))
+        fig_scatter.update_layout(margin=dict(l=10, r=10, t=35, b=20))
         st.plotly_chart(fig_scatter, use_container_width=True)
-    else:
-        st.info("No records in current filter have both sequenced Genome Size and GC Content reported.")
 
 
-# ---------------------------------------------------------
-# TAB 4: About
-# ---------------------------------------------------------
-with tab_about:
-    st.subheader("About PubScope")
+with st.expander("🩺 Clinical Sourcing Guide: How to Request & Acquire Phage Aliquots", expanded=False):
     st.markdown("""
-    **PubScope** is an open-source platform designed to make scientific literature characterization datasets accessible, interactive, and searchable online.
-
-    ### 🔬 Current Dataset: LitSift Bacteriophages
-    - Curated from **80 Open-Access (OA) peer-reviewed publications**.
-    - Covers phenotypic, morphological, and genomic traits including:
-      - **Genomics**: Genome size (bp), GC percentage, NCBI Accession numbers, and BioProject IDs.
-      - **Taxonomy & Ultrastructure**: Order, Family, TEM morphology, capsid dimensions, and tail characteristics.
-      - **Infection Biology**: Host bacterial species, challenge strains, plaque morphology, MOI, latent period, and burst size.
-      - **Stability**: Temperature and pH tolerance ranges.
-      - **Provenance**: Isolation sample types and geographical origins.
-
-    ---
-    ### 💻 Source Code & Deployment
-    - Repository: [github.com/discoveraniket/PubScope](https://github.com/discoveraniket/PubScope)
-    - Hosted with Streamlit Community Cloud.
+    ### How to Source Phage Samples for MDR Infections:
+    1. **Contact Author Labs Directly**:
+       - Click the **`📄 Contact Authors / Article DOI`** button on any phage card.
+       - Look for the **Corresponding Author** contact email in the publisher article header.
+    2. **Material Transfer Agreement (MTA)**:
+       - Research universities and medical institutes typically share live phage aliquots under standard academic MTA agreements for clinical/compassionate use or research.
+    3. **NCBI Genomic Sequence / Synthesis**:
+       - If physical sample acquisition is delayed by geographical borders, use the **`🧬 NCBI GenBank Accession`** to analyze the genome or commission synthetic phage engineering.
     """)
+
+
+# ---------------------------------------------------------
+# CLINICIAN ACTION CARDS FEED
+# ---------------------------------------------------------
+st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+
+if filtered_df.empty:
+    st.info(f"No phages found matching `{active_query}` with the selected criteria. Try typing a broader genus (e.g. *Pseudomonas*, *Klebsiella*) or disable the 'Only Lytic' filter.")
+else:
+    # Pagination
+    PAGE_SIZE = 10
+    total_items = len(filtered_df)
+    total_pages = max(1, math.ceil(total_items / PAGE_SIZE))
+
+    if total_pages > 1:
+        pag_col1, pag_col2 = st.columns([3, 1], vertical_alignment="center")
+        with pag_col1:
+            st.caption(f"Showing page items for {total_items} candidates")
+        with pag_col2:
+            current_page = st.selectbox(
+                "Page Selector",
+                options=list(range(1, total_pages + 1)),
+                format_func=lambda x: f"Page {x} of {total_pages}",
+                label_visibility="collapsed",
+                key="page_dropdown"
+            )
+        start_idx = (current_page - 1) * PAGE_SIZE
+        end_idx = min(start_idx + PAGE_SIZE, total_items)
+        page_records = filtered_df.iloc[start_idx:end_idx]
+    else:
+        page_records = filtered_df
+
+    for _, row in page_records.iterrows():
+        phage_name = row.get("Phage Name", "Unnamed Phage")
+        host_name = row.get("Host Bacterial Species", "Unspecified Host")
+        challenge_host = row.get("Experimental / Challenge Host", "")
+        p_type = row.get("Phage_Type_Clean", "Not reported")
+        badge_class = "badge-lytic" if p_type == "Lytic" else "badge-other"
+        badge_text = "✓ Lytic (Therapeutic Safe)" if p_type == "Lytic" else f"⚠️ {p_type}"
+
+        temp = row.get("Optimal Temperature (°C)", "Not reported")
+        ph_val = row.get("Optimal pH", "Not reported")
+        burst = row.get("Burst size (phage/infected bacterium)", "Not reported")
+        latent = row.get("Latent period (min)", "Not reported")
+
+        location = row.get("Place of Sample collection", "Not reported")
+        sample_src = row.get("Phage isolation Sample", "Not reported")
+        doi_url = row.get("DOI_URL")
+        doi_raw = row.get("Article DOI", "")
+        ncbi_url = row.get("NCBI_URL")
+        accession_raw = row.get("Phage Genome Accession/Bioproject", "Not reported")
+        contact_email = row.get("Contact_Email")
+
+        # Prepare mailto URL if email is present
+        if contact_email:
+            subject = urllib.parse.quote(f"Inquiry regarding Phage Sample: {phage_name} (PubScope)")
+            body = urllib.parse.quote(
+                f"Dear Dr.,\n\nI am contacting you regarding your publication on {phage_name} (DOI: {doi_raw}). "
+                f"We are evaluating therapeutic phage candidates for an infection involving {host_name} and would like to inquire about sample availability or MTA.\n\nSincerely,"
+            )
+            contact_href = f"mailto:{contact_email}?subject={subject}&body={body}"
+            contact_label = f"✉️ Email Corresponding Author ({contact_email}) ↗"
+        elif doi_url:
+            contact_href = doi_url
+            contact_label = "📄 Contact Authors via Article DOI ↗"
+        else:
+            contact_href = None
+            contact_label = "No Contact Link Available"
+
+        st.markdown(f"""
+        <div class="clinician-card">
+            <div class="card-top-row">
+                <div>
+                    <div class="card-phage-title">🦠 {phage_name}</div>
+                    <div class="target-pathogen-title">
+                        Target Pathogen: <b>{host_name}</b>
+                        {f" · <i>Challenge strain: {challenge_host}</i>" if challenge_host and challenge_host != 'Not reported' else ''}
+                    </div>
+                </div>
+                <div>
+                    <span class="badge {badge_class}">{badge_text}</span>
+                </div>
+            </div>
+            
+            <div class="clinical-metrics-grid">
+                <div class="c-metric-item">
+                    <span class="c-metric-label">Optimal Temp</span>
+                    <span class="c-metric-val">{temp}</span>
+                </div>
+                <div class="c-metric-item">
+                    <span class="c-metric-label">Optimal pH</span>
+                    <span class="c-metric-val">{ph_val}</span>
+                </div>
+                <div class="c-metric-item">
+                    <span class="c-metric-label">Burst Kinetics</span>
+                    <span class="c-metric-val">{burst}</span>
+                </div>
+                <div class="c-metric-item">
+                    <span class="c-metric-label">Latent Period</span>
+                    <span class="c-metric-val">{latent}</span>
+                </div>
+            </div>
+
+            <div class="sourcing-box">
+                <div class="sourcing-row">
+                    <span class="sourcing-label">📍 Isolation Location / Facility:</span>
+                    <span class="sourcing-val">{location}</span>
+                </div>
+                <div class="sourcing-row">
+                    <span class="sourcing-label">💧 Isolation Environment:</span>
+                    <span class="sourcing-val">{sample_src}</span>
+                </div>
+                <div class="sourcing-row">
+                    <span class="sourcing-label">🧬 NCBI Accession / BioProject:</span>
+                    <span class="sourcing-val">{accession_raw}</span>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px;">
+                {f'<a href="{contact_href}" target="_blank" class="contact-cta-button">{contact_label}</a>' if contact_href else ''}
+                {f'<a href="{ncbi_url}" target="_blank" class="secondary-link-btn">🧬 View NCBI Sequence ↗</a>' if ncbi_url else ''}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Single-Click Researcher Deep Details
+        with st.expander(f"🔬 Detailed Morphology & Biophysics ({phage_name})", expanded=False):
+            d1, d2 = st.columns(2)
+            with d1:
+                st.markdown(f"**Taxonomy:** {row.get('Phage Taxonomy', 'Not reported')}")
+                st.markdown(f"**Capsid / TEM Dimensions:** {row.get('Phage TEM dimensions/Capsid morphology', 'Not reported')}")
+                st.markdown(f"**Structural Similarity:** {row.get('Phage TEM shows structural similarity with', 'Not reported')}")
+                plaque_str = row.get("Phage's Plaque characteristics/Shape", 'Not reported')
+                st.markdown(f"**Plaque Characteristics:** {plaque_str}")
+            with d2:
+                st.markdown(f"**Genome Size:** {row.get('Phage Genome size (bp)', 'Not reported')}")
+                st.markdown(f"**GC Content:** {row.get('Phage GC content (%)', 'Not reported')}")
+                st.markdown(f"**Optimal MOI:** {row.get('Optimal MOI', 'Not reported')}")
+                st.markdown(f"**Article DOI Reference:** `{doi_raw}`")
+
+    # CSV Download Options
+    st.markdown("<br>", unsafe_allow_html=True)
+    c_dl1, c_dl2 = st.columns(2)
+    with c_dl1:
+        csv_filtered = filtered_df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Download Matching Phages (CSV)",
+            data=csv_filtered,
+            file_name="PubScope_matching_phages.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    with c_dl2:
+        csv_all = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📦 Download Complete Dataset (CSV)",
+            data=csv_all,
+            file_name="LitSift_Complete_Dataset.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
