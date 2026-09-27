@@ -40,6 +40,9 @@ if theme_mode == "Dark":
         --bg-card: #131b2e;
         --text-main: #f8fafc;
         --text-muted: #94a3b8;
+        --key-label-color: #38bdf8;
+        --tile-bg: rgba(11, 15, 25, 0.45);
+        --tile-border: rgba(56, 189, 248, 0.22);
         --border-color: #243049;
         --stat-bg: #1c273e;
         --search-border: #38bdf8;
@@ -72,6 +75,9 @@ elif theme_mode == "Light":
         --bg-card: #ffffff;
         --text-main: #0f172a;
         --text-muted: #64748b;
+        --key-label-color: #0284c7;
+        --tile-bg: #ffffff;
+        --tile-border: #e2e8f0;
         --border-color: #e2e8f0;
         --stat-bg: #f1f5f9;
         --search-border: #0284c7;
@@ -101,6 +107,9 @@ else:  # System Default
         --bg-card: #ffffff;
         --text-main: #0f172a;
         --text-muted: #64748b;
+        --key-label-color: #0284c7;
+        --tile-bg: #ffffff;
+        --tile-border: #e2e8f0;
         --border-color: #e2e8f0;
         --stat-bg: #f1f5f9;
         --search-border: #0284c7;
@@ -123,6 +132,9 @@ else:  # System Default
             --bg-card: #131b2e;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
+            --key-label-color: #38bdf8;
+            --tile-bg: rgba(11, 15, 25, 0.45);
+            --tile-border: rgba(56, 189, 248, 0.22);
             --border-color: #243049;
             --stat-bg: #1c273e;
             --search-border: #38bdf8;
@@ -307,6 +319,9 @@ st.markdown(f"""
         font-weight: 800;
         color: var(--text-main);
         line-height: 1.25;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }}
     .target-pathogen-title {{
         font-size: 0.95rem;
@@ -419,34 +434,56 @@ st.markdown(f"""
         text-decoration: underline;
     }}
     .card-details-content {{
-        margin-top: 8px;
-        background: var(--stat-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 10px 12px;
+        margin-top: 10px;
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        padding: 4px 2px 2px 2px !important;
     }}
     .details-grid {{
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: 8px 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px 24px;
+        margin-top: 4px;
     }}
     .details-item {{
         display: flex;
         flex-direction: column;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
     }}
     .details-label {{
-        font-size: 0.68rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        letter-spacing: 0.03em;
+        font-size: 0.68rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        color: var(--key-label-color) !important;
+        letter-spacing: 0.05em !important;
+        line-height: 1.25 !important;
+        margin-bottom: 2px !important;
+        display: block !important;
     }}
     .details-val {{
-        font-size: 0.84rem;
-        font-weight: 600;
-        color: var(--text-main);
-        word-break: break-word;
-        margin-top: 1px;
+        font-size: 0.88rem !important;
+        font-weight: 500 !important;
+        color: var(--text-main) !important;
+        word-break: break-word !important;
+        line-height: 1.4 !important;
+    }}
+    .meta-key {{
+        color: var(--key-label-color) !important;
+        font-weight: 600 !important;
+        font-size: 0.84rem !important;
+    }}
+    .meta-val {{
+        color: var(--text-main) !important;
+        font-weight: 600 !important;
+    }}
+    @media (min-width: 680px) {{
+        .details-item-wide {{
+            grid-column: span 2 !important;
+        }}
     }}
 
     /* Global Text & Heading Fixes */
@@ -601,10 +638,10 @@ def load_data(csv_path: str = "LitSift_Extracted_Dataset.csv"):
     df = pd.read_csv(csv_path, encoding="utf-8", encoding_errors="replace")
     df.columns = [clean_col_name(c) for c in df.columns]
 
+    df = df.fillna("Not reported")
     for col in df.columns:
-        if df[col].dtype == object:
-            df[col] = df[col].astype(str).str.strip()
-            df[col] = df[col].replace(["nan", "None", "-"], "Not reported")
+        df[col] = df[col].astype(str).str.strip()
+        df[col] = df[col].replace(["nan", "None", "-", "NaN", "<NA>"], "Not reported")
 
     df["Phage_Type_Clean"] = df["Phage type: Lytic/ Lysogenic/ Engineered"].apply(normalize_phage_type)
     df["Genome_Size_bp_num"] = df["Phage Genome size (bp)"].apply(parse_genome_size)
@@ -655,10 +692,12 @@ phages = sorted([p.strip() for p in df['Phage Name'].dropna().unique() if p.stri
 places = sorted([pl.strip() for pl in df['Place of Sample collection'].dropna().unique() if pl.strip() and not pl.startswith('Not')])
 samples = sorted([s.strip() for s in df['Phage isolation Sample'].dropna().unique() if s.strip() and not s.startswith('Not')])
 accessions = sorted([a.strip() for a in df['Phage Genome Accession/Bioproject'].dropna().unique() if a.strip() and not a.startswith('Not')])
+authors = sorted([a.strip() for a in df['Corresponding Author'].dropna().unique() if a.strip() and not a.startswith('Not')]) if 'Corresponding Author' in df.columns else []
+institutions = sorted([i.strip() for i in df['Author Institution'].dropna().unique() if i.strip() and not i.startswith('Not')]) if 'Author Institution' in df.columns else []
 common_keywords = ["Sewage", "India", "Manipal", "Mumbai", "Pune", "River water", "Hospital effluent", "Lytic", "MDR", "Capsid"]
 
 search_suggestions = []
-for item in hosts + phages + common_keywords + places + samples + accessions:
+for item in hosts + phages + authors + institutions + common_keywords + places + samples + accessions:
     if item and item not in search_suggestions:
         search_suggestions.append(item)
 
@@ -839,6 +878,19 @@ else:
             ncbi_url = row.get("NCBI_URL")
             accession_raw = row.get("Phage Genome Accession/Bioproject", "Not reported")
 
+            raw_author = str(row.get("Corresponding Author", "")).strip()
+            author_name = raw_author if raw_author.lower() not in ["not reported", "nan", "none", "-", ""] else ""
+
+            raw_inst = str(row.get("Author Institution", "")).strip()
+            author_inst = raw_inst if raw_inst.lower() not in ["not reported", "nan", "none", "-", ""] else ""
+
+            author_orcid = str(row.get("Author ORCID", "")).strip()
+            if author_orcid.lower() in ["not reported", "nan", "none", "-"]:
+                author_orcid = ""
+
+            raw_tax = str(row.get("Phage Taxonomy", "")).strip()
+            taxonomy = raw_tax if raw_tax.lower() not in ["not reported", "nan", "none", "-", ""] else "Not reported"
+
             # Check if author email column is in dataset (ready for user's updated CSV)
             author_email = ""
             for em_col in ["Author Email", "Email", "Contact Email", "Corresponding Author Email"]:
@@ -846,10 +898,11 @@ else:
                     author_email = str(row[em_col]).strip()
                     break
 
-            # Pre-filled email request link
+            # Pre-filled email request link with personalized author greeting
+            salutation = f"Dr. {author_name}" if author_name else "Corresponding Author"
             email_subject = urllib.parse.quote(f"Phage Sample / MTA Request: {phage_name} (DOI: {doi_raw})")
             email_body = urllib.parse.quote(
-                f"Dear Corresponding Author,\n\n"
+                f"Dear {salutation},\n\n"
                 f"I am contacting you regarding your published study on bacteriophage '{phage_name}' (DOI: {doi_raw}).\n\n"
                 f"We are evaluating phage therapy options for a clinical infection involving {host_name} "
                 f"and would like to inquire whether a sample/aliquot of this phage is available for therapeutic evaluation or research "
@@ -861,9 +914,24 @@ else:
 
             contact_btn_html = f'<a href="{mailto_link}" class="contact-cta-button">✉️ Contact Author</a>'
             doi_btn_html = f'<a href="{doi_url}" target="_blank" class="secondary-link-btn">📄 DOI ↗</a>' if doi_url else ''
+            orcid_btn_html = f'<a href="{author_orcid}" target="_blank" class="secondary-link-btn">🆔 ORCID ↗</a>' if author_orcid and str(author_orcid).startswith("http") else ''
             ncbi_btn_html = f'<a href="{ncbi_url}" target="_blank" class="secondary-link-btn">🧬 NCBI ↗</a>' if ncbi_url else ''
 
             challenge_str = f" · <span style='font-style: italic; color: var(--text-muted); font-size: 0.88rem;'>Challenge: {challenge_host}</span>" if challenge_host and challenge_host != 'Not reported' else ""
+
+            # Primary relevant meta lines: 1) Corresponding Author & Institution, 2) GenBank Accession & Taxonomy
+            if author_name and author_inst:
+                author_str = f"👤 <span class='meta-key'>Corresponding Author:</span> <span class='meta-val'>{author_name}</span> · <span style='color: var(--text-muted);'>{author_inst}</span>"
+            elif author_name:
+                author_str = f"👤 <span class='meta-key'>Corresponding Author:</span> <span class='meta-val'>{author_name}</span>"
+            elif author_inst:
+                author_str = f"🏛️ <span class='meta-key'>Institution:</span> <span class='meta-val'>{author_inst}</span>"
+            else:
+                author_str = "👤 <span class='meta-key'>Corresponding Author:</span> <span class='meta-val'>Available via study DOI</span>"
+
+            acc_display = accession_raw if accession_raw != "Not reported" else "Not deposited"
+            tax_display = taxonomy if taxonomy != "Not reported" else "Unclassified"
+            genomic_str = f"🧬 <span class='meta-key'>Accession:</span> <span class='meta-val'>{acc_display}</span> &nbsp;·&nbsp; 🏷️ <span class='meta-key'>Taxonomy:</span> <span class='meta-val'>{tax_display}</span>"
 
             # Virology & Growth Parameters for in-card drawer
             temp = row.get("Optimal Temperature (°C)", "Not reported")
@@ -871,27 +939,43 @@ else:
             burst = row.get("Burst size (phage/infected bacterium)", "Not reported")
             latent = row.get("Latent period (min)", "Not reported")
             plaque_char = row.get("Phage's Plaque characteristics/Shape", "Not reported")
-            taxonomy = row.get("Phage Taxonomy", "Not reported")
             morphology = row.get("Phage TEM dimensions/Capsid morphology", "Not reported")
             similarity = row.get("Phage TEM shows structural similarity with", "Not reported")
             g_size = row.get("Phage Genome size (bp)", "Not reported")
             gc_val = row.get("Phage GC content (%)", "Not reported")
             moi_val = row.get("Optimal MOI", "Not reported")
 
+            phage_icon_svg = (
+                '<svg width="20" height="20" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="color: var(--tab-active, #0284c7); flex-shrink: 0;">'
+                '<polygon points="18,2 25.5,6.5 25.5,14.5 18,18.5 10.5,14.5 10.5,6.5" fill="rgba(2, 132, 199, 0.2)" stroke-width="2" />'
+                '<polyline points="10.5,6.5 18,10.5 25.5,6.5" stroke-width="1.2" opacity="0.65" />'
+                '<polyline points="10.5,14.5 18,10.5 25.5,14.5" stroke-width="1.2" opacity="0.65" />'
+                '<line x1="18" y1="2" x2="18" y2="10.5" stroke-width="1.2" opacity="0.65" />'
+                '<line x1="18" y1="10.5" x2="18" y2="18.5" stroke-width="1.2" opacity="0.65" />'
+                '<line x1="14.5" y1="19.5" x2="21.5" y2="19.5" stroke-width="2.4" />'
+                '<line x1="16.5" y1="20" x2="16.5" y2="27" stroke-width="1.8" />'
+                '<line x1="19.5" y1="20" x2="19.5" y2="27" stroke-width="1.8" />'
+                '<polygon points="13.5,27 22.5,27 23.5,28.5 12.5,28.5" fill="currentColor" stroke-width="1" />'
+                '<polyline points="13.5,28 7,26 3,34" stroke-width="1.9" />'
+                '<polyline points="22.5,28 29,26 33,34" stroke-width="1.9" />'
+                '</svg>'
+            )
+
             card_html = (
                 f'<div class="clinician-card">'
                 f'<div class="card-top-row">'
                 f'<div>'
-                f'<div class="card-phage-title">🦠 {phage_name}</div>'
-                f'<div class="target-pathogen-title">Target: <b>{host_name}</b>{challenge_str}</div>'
+                f'<div class="card-phage-title">{phage_icon_svg}<span>{phage_name}</span></div>'
+                f'<div class="target-pathogen-title"><span class="meta-key">Target Pathogen:</span> <b>{host_name}</b>{challenge_str}</div>'
                 f'</div>'
                 f'<div><span class="badge {badge_class}">{badge_text}</span></div>'
                 f'</div>'
-                f'<div class="card-meta-line">📍 <b>Lab / Location:</b> {location}</div>'
-                f'<div class="card-meta-line">💧 <b>Source:</b> {sample_src} &nbsp;·&nbsp; 🧬 <b>Accession:</b> {accession_raw}</div>'
+                f'<div class="card-meta-line">{author_str}</div>'
+                f'<div class="card-meta-line">{genomic_str}</div>'
                 f'<div class="card-actions-row">'
                 f'{contact_btn_html}'
                 f'{doi_btn_html}'
+                f'{orcid_btn_html}'
                 f'{ncbi_btn_html}'
                 f'</div>'
                 f'<details class="card-details-drawer">'
@@ -903,13 +987,15 @@ else:
                 f'<div class="details-item"><span class="details-label">Burst Kinetics</span><span class="details-val">{burst}</span></div>'
                 f'<div class="details-item"><span class="details-label">Latent Period</span><span class="details-val">{latent}</span></div>'
                 f'<div class="details-item"><span class="details-label">Taxonomy</span><span class="details-val">{taxonomy}</span></div>'
-                f'<div class="details-item"><span class="details-label">TEM Morphology</span><span class="details-val">{morphology}</span></div>'
                 f'<div class="details-item"><span class="details-label">Structural Similarity</span><span class="details-val">{similarity}</span></div>'
                 f'<div class="details-item"><span class="details-label">Genome Size</span><span class="details-val">{g_size}</span></div>'
                 f'<div class="details-item"><span class="details-label">GC Content</span><span class="details-val">{gc_val}</span></div>'
                 f'<div class="details-item"><span class="details-label">Optimal MOI</span><span class="details-val">{moi_val}</span></div>'
-                f'<div class="details-item"><span class="details-label">Plaque Shape</span><span class="details-val">{plaque_char}</span></div>'
                 f'<div class="details-item"><span class="details-label">DOI Reference</span><span class="details-val">{doi_raw}</span></div>'
+                f'<div class="details-item details-item-wide"><span class="details-label">TEM Morphology</span><span class="details-val">{morphology}</span></div>'
+                f'<div class="details-item details-item-wide"><span class="details-label">Plaque Shape</span><span class="details-val">{plaque_char}</span></div>'
+                f'<div class="details-item details-item-wide"><span class="details-label">Isolation Lab / Location</span><span class="details-val">{location}</span></div>'
+                f'<div class="details-item"><span class="details-label">Sample Source</span><span class="details-val">{sample_src}</span></div>'
                 f'</div>'
                 f'</div>'
                 f'</details>'
