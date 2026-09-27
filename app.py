@@ -285,32 +285,34 @@ st.markdown(f"""
     .clinician-card {{
         background: var(--bg-card);
         border: 1.5px solid var(--border-color);
-        border-radius: 14px;
-        padding: 20px 22px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        border-radius: 12px;
+        padding: 16px 18px;
+        margin-bottom: 14px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
         transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }}
     .clinician-card:hover {{
         border-color: #0284c7;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
     }}
     .card-top-row {{
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 14px;
-        margin-bottom: 12px;
+        gap: 12px;
+        margin-bottom: 8px;
     }}
     .card-phage-title {{
-        font-size: 1.35rem;
+        font-size: 1.22rem;
         font-weight: 800;
         color: var(--text-main);
+        line-height: 1.25;
     }}
     .target-pathogen-title {{
-        font-size: 1.02rem;
+        font-size: 0.95rem;
         color: var(--text-muted);
-        margin-top: 2px;
+        margin-top: 3px;
+        line-height: 1.35;
     }}
     .target-pathogen-title b {{
         color: var(--text-main);
@@ -320,11 +322,12 @@ st.markdown(f"""
     /* Badges */
     .badge {{
         display: inline-block;
-        padding: 5px 12px;
+        padding: 3px 9px;
         border-radius: 9999px;
-        font-size: 0.8rem;
+        font-size: 0.76rem;
         font-weight: 700;
         letter-spacing: 0.02em;
+        white-space: nowrap;
     }}
     .badge-lytic {{ 
         background-color: var(--accent-green-bg); 
@@ -337,85 +340,40 @@ st.markdown(f"""
         border: 1px solid rgba(148, 163, 184, 0.3); 
     }}
 
-    /* SOURCING & CONTACT HIGHLIGHT BOX (The core clinician need!) */
-    .sourcing-contact-box {{
-        background: var(--card-highlight);
-        border: 1.5px solid rgba(2, 132, 199, 0.28);
-        border-radius: 12px;
-        padding: 14px 16px;
-        margin: 14px 0 16px 0;
-    }}
-    .sourcing-header {{
-        font-size: 0.85rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: #0284c7;
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }}
-    .sourcing-row {{
-        display: flex;
-        flex-direction: column;
-        margin-bottom: 8px;
-        gap: 2px;
-    }}
-    .sourcing-label {{
-        font-weight: 600;
-        font-size: 0.8rem;
+    /* Card Metadata Lines (Direct, no inner box) */
+    .card-meta-line {{
+        font-size: 0.88rem;
         color: var(--text-muted);
-    }}
-    .sourcing-val {{
-        font-weight: 600;
-        font-size: 0.92rem;
-        color: var(--text-main);
+        line-height: 1.45;
         word-break: break-word;
+        margin-bottom: 3px;
     }}
-
-    /* Clinical Metrics Grid */
-    .clinical-metrics-grid {{
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 8px;
-        background: var(--stat-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 10px;
-        padding: 10px 14px;
-        margin-bottom: 14px;
-    }}
-    .c-metric-item {{
-        display: flex;
-        flex-direction: column;
-    }}
-    .c-metric-label {{
-        font-size: 0.72rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        letter-spacing: 0.04em;
-    }}
-    .c-metric-val {{
-        font-size: 0.92rem;
-        font-weight: 700;
+    .card-meta-line b {{
         color: var(--text-main);
-        margin-top: 1px;
+        font-weight: 600;
     }}
 
-    /* Action Buttons inside Card */
+    /* Actions Bar */
+    .card-actions-row {{
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+        margin-bottom: 4px;
+    }}
     .contact-cta-button {{
         display: inline-flex;
         align-items: center;
         gap: 6px;
         background-color: #0284c7;
         color: #ffffff !important;
-        font-weight: 700;
-        font-size: 0.88rem;
-        padding: 9px 16px;
-        border-radius: 9px;
+        font-weight: 600;
+        font-size: 0.82rem;
+        padding: 6px 14px;
+        border-radius: 8px;
         text-decoration: none !important;
-        box-shadow: 0 2px 4px rgba(2, 132, 199, 0.2);
+        box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25);
         transition: background-color 0.15s ease, transform 0.1s ease;
     }}
     .contact-cta-button:hover {{
@@ -425,19 +383,70 @@ st.markdown(f"""
     .secondary-link-btn {{
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        background-color: var(--btn-bg);
+        gap: 5px;
+        background-color: var(--stat-bg);
         color: var(--text-main) !important;
         border: 1px solid var(--border-color);
-        font-weight: 600;
-        font-size: 0.88rem;
-        padding: 9px 16px;
-        border-radius: 9px;
+        font-weight: 500;
+        font-size: 0.82rem;
+        padding: 5px 11px;
+        border-radius: 8px;
         text-decoration: none !important;
-        transition: border-color 0.15s ease;
+        transition: border-color 0.15s ease, background-color 0.15s ease;
     }}
     .secondary-link-btn:hover {{
         border-color: #0284c7;
+        background-color: var(--card-highlight);
+    }}
+
+    /* In-Card Collapsible Drawer */
+    .card-details-drawer {{
+        margin-top: 10px;
+        border-top: 1px dashed var(--border-color);
+        padding-top: 8px;
+    }}
+    .card-details-drawer summary {{
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #0284c7;
+        cursor: pointer;
+        user-select: none;
+        outline: none;
+        transition: color 0.15s ease;
+    }}
+    .card-details-drawer summary:hover {{
+        color: #0369a1;
+        text-decoration: underline;
+    }}
+    .card-details-content {{
+        margin-top: 8px;
+        background: var(--stat-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 10px 12px;
+    }}
+    .details-grid {{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 8px 12px;
+    }}
+    .details-item {{
+        display: flex;
+        flex-direction: column;
+    }}
+    .details-label {{
+        font-size: 0.68rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        letter-spacing: 0.03em;
+    }}
+    .details-val {{
+        font-size: 0.84rem;
+        font-weight: 600;
+        color: var(--text-main);
+        word-break: break-word;
+        margin-top: 1px;
     }}
 
     /* Global Text & Heading Fixes */
@@ -500,20 +509,9 @@ st.markdown(f"""
         .hero-subtitle {{
             font-size: 0.95rem !important;
         }}
-        .clinical-metrics-grid {{
+        .details-grid {{
             grid-template-columns: repeat(2, 1fr) !important;
-            gap: 8px !important;
-        }}
-        .card-top-row {{
-            flex-direction: column !important;
-            align-items: flex-start !important;
-        }}
-        .sourcing-row {{
-            flex-direction: column !important;
-            align-items: flex-start !important;
-        }}
-        .sourcing-val {{
-            text-align: left !important;
+            gap: 8px 10px !important;
         }}
     }}
 </style>
@@ -688,7 +686,6 @@ if is_searching:
             <polyline points="22.5,28 29,26 33,34" stroke-width="1.9" />
         </svg>
         <span style="font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em;">PhageScope</span>
-        <span class="brand-badge">Clinical Directory</span>
     </div>
     """, unsafe_allow_html=True)
 else:
@@ -793,26 +790,15 @@ else:
     is_browse_all = (active_query == "__ALL__")
     filtered_df = search_dataframe(df, active_query)
 
-    # Results Header & Controls
-    ctrl_col1, ctrl_col2 = st.columns([3.2, 1.2], vertical_alignment="center")
-
-    with ctrl_col1:
-        if is_browse_all:
-            st.markdown(f"**Showing all {len(filtered_df)} phages in database**")
-        else:
-            st.markdown(f"Showing **{len(filtered_df)}** candidate phages for: **`{active_query}`**")
-
-    with ctrl_col2:
-        lytic_toggle = st.toggle("🛡️ Only Lytic (Therapeutic Safe)", value=st.session_state["lytic_only"], key="lytic_checkbox")
-        st.session_state["lytic_only"] = lytic_toggle
-        if lytic_toggle:
-            filtered_df = filtered_df[filtered_df["Phage_Type_Clean"] == "Lytic"]
-
-    st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+    # Results Header
+    if is_browse_all:
+        st.markdown(f"<div style='font-size: 1.05rem; font-weight: 600; margin-bottom: 12px; color: var(--text-main);'>Showing all <b>{len(filtered_df)}</b> phages in catalog</div>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<div style='font-size: 1.05rem; font-weight: 600; margin-bottom: 12px; color: var(--text-main);'>Showing <b>{len(filtered_df)}</b> candidate phages for: <span style='color: #0284c7;'>`{active_query}`</span></div>", unsafe_allow_html=True)
 
     if filtered_df.empty:
-        st.warning(f"No phages found matching `{active_query}` with the selected criteria.")
-        st.info("💡 **Clinical Tip**: Try searching the genus name (e.g. *Pseudomonas*, *Klebsiella*) or turn off the **'Only Lytic'** filter.")
+        st.warning(f"No phages found matching `{active_query}`.")
+        st.info("💡 **Clinical Tip**: Try searching the genus name (e.g. *Pseudomonas*, *Klebsiella*) or broader keywords like *India*, *Sewage*.")
     else:
         # Pagination
         PAGE_SIZE = 8
@@ -837,19 +823,14 @@ else:
         else:
             page_records = filtered_df
 
-        # Render Phage Cards
+        # Render Phage Cards (Clean, Single-Container Design)
         for idx, row in page_records.iterrows():
             phage_name = row.get("Phage Name", "Unnamed Phage")
             host_name = row.get("Host Bacterial Species", "Unspecified Host")
             challenge_host = row.get("Experimental / Challenge Host", "")
             p_type = row.get("Phage_Type_Clean", "Not reported")
             badge_class = "badge-lytic" if p_type == "Lytic" else "badge-other"
-            badge_text = "✓ Lytic (Therapeutic Safe)" if p_type == "Lytic" else f"⚠️ {p_type}"
-
-            temp = row.get("Optimal Temperature (°C)", "Not reported")
-            ph_val = row.get("Optimal pH", "Not reported")
-            burst = row.get("Burst size (phage/infected bacterium)", "Not reported")
-            latent = row.get("Latent period (min)", "Not reported")
+            badge_text = "✓ Lytic" if p_type == "Lytic" else f"⚠️ {p_type}"
 
             location = row.get("Place of Sample collection", "Not reported")
             sample_src = row.get("Phage isolation Sample", "Not reported")
@@ -858,7 +839,14 @@ else:
             ncbi_url = row.get("NCBI_URL")
             accession_raw = row.get("Phage Genome Accession/Bioproject", "Not reported")
 
-            # Sample email pre-fill
+            # Check if author email column is in dataset (ready for user's updated CSV)
+            author_email = ""
+            for em_col in ["Author Email", "Email", "Contact Email", "Corresponding Author Email"]:
+                if em_col in row and pd.notna(row[em_col]) and str(row[em_col]).strip() not in ["Not reported", "-", ""]:
+                    author_email = str(row[em_col]).strip()
+                    break
+
+            # Pre-filled email request link
             email_subject = urllib.parse.quote(f"Phage Sample / MTA Request: {phage_name} (DOI: {doi_raw})")
             email_body = urllib.parse.quote(
                 f"Dear Corresponding Author,\n\n"
@@ -869,43 +857,19 @@ else:
                 f"Looking forward to your response.\n\n"
                 f"Sincerely,\n[Clinician / Researcher Name]\n[Hospital / Institution]"
             )
-            mailto_link = f"mailto:?subject={email_subject}&body={email_body}"
+            mailto_link = f"mailto:{author_email}?subject={email_subject}&body={email_body}"
 
-            challenge_str = f" · <i>Challenge strain: {challenge_host}</i>" if challenge_host and challenge_host != 'Not reported' else ""
-            doi_btn_html = f'<a href="{doi_url}" target="_blank" class="contact-cta-button">📄 Contact Author Lab via DOI ↗</a>' if doi_url else ''
-            ncbi_btn_html = f'<a href="{ncbi_url}" target="_blank" class="secondary-link-btn">🧬 View NCBI Sequence ↗</a>' if ncbi_url else ''
+            contact_btn_html = f'<a href="{mailto_link}" class="contact-cta-button">✉️ Contact Author</a>'
+            doi_btn_html = f'<a href="{doi_url}" target="_blank" class="secondary-link-btn">📄 DOI ↗</a>' if doi_url else ''
+            ncbi_btn_html = f'<a href="{ncbi_url}" target="_blank" class="secondary-link-btn">🧬 NCBI ↗</a>' if ncbi_url else ''
 
-            card_html = (
-                f'<div class="clinician-card">'
-                f'<div class="card-top-row">'
-                f'<div>'
-                f'<div class="card-phage-title">🦠 {phage_name}</div>'
-                f'<div class="target-pathogen-title">Target Pathogen: <b>{host_name}</b>{challenge_str}</div>'
-                f'</div>'
-                f'<div><span class="badge {badge_class}">{badge_text}</span></div>'
-                f'</div>'
-                f'<div class="sourcing-contact-box">'
-                f'<div class="sourcing-header">📦 Whom & Where to Contact for Samples</div>'
-                f'<div class="sourcing-row"><span class="sourcing-label">📍 Isolation Lab / Location:</span><span class="sourcing-val">{location}</span></div>'
-                f'<div class="sourcing-row"><span class="sourcing-label">💧 Sample Environment:</span><span class="sourcing-val">{sample_src}</span></div>'
-                f'<div class="sourcing-row"><span class="sourcing-label">🧬 Accession / BioProject:</span><span class="sourcing-val">{accession_raw}</span></div>'
-                f'<div style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">'
-                f'{doi_btn_html}'
-                f'<a href="{mailto_link}" class="secondary-link-btn">✉️ Draft Sample Request Email</a>'
-                f'{ncbi_btn_html}'
-                f'</div>'
-                f'</div>'
-                f'<div class="clinical-metrics-grid">'
-                f'<div class="c-metric-item"><span class="c-metric-label">Optimal Temp</span><span class="c-metric-val">{temp}</span></div>'
-                f'<div class="c-metric-item"><span class="c-metric-label">Optimal pH</span><span class="c-metric-val">{ph_val}</span></div>'
-                f'<div class="c-metric-item"><span class="c-metric-label">Burst Kinetics</span><span class="c-metric-val">{burst}</span></div>'
-                f'<div class="c-metric-item"><span class="c-metric-label">Latent Period</span><span class="c-metric-val">{latent}</span></div>'
-                f'</div>'
-                f'</div>'
-            )
-            st.markdown(card_html, unsafe_allow_html=True)
+            challenge_str = f" · <span style='font-style: italic; color: var(--text-muted); font-size: 0.88rem;'>Challenge: {challenge_host}</span>" if challenge_host and challenge_host != 'Not reported' else ""
 
-            # Deep Details Collapsed
+            # Virology & Growth Parameters for in-card drawer
+            temp = row.get("Optimal Temperature (°C)", "Not reported")
+            ph_val = row.get("Optimal pH", "Not reported")
+            burst = row.get("Burst size (phage/infected bacterium)", "Not reported")
+            latent = row.get("Latent period (min)", "Not reported")
             plaque_char = row.get("Phage's Plaque characteristics/Shape", "Not reported")
             taxonomy = row.get("Phage Taxonomy", "Not reported")
             morphology = row.get("Phage TEM dimensions/Capsid morphology", "Not reported")
@@ -914,18 +878,44 @@ else:
             gc_val = row.get("Phage GC content (%)", "Not reported")
             moi_val = row.get("Optimal MOI", "Not reported")
 
-            with st.expander(f"🔬 Virology & Genomic Details ({phage_name})", expanded=False):
-                d1, d2 = st.columns(2)
-                with d1:
-                    st.markdown(f"**Taxonomy:** {taxonomy}")
-                    st.markdown(f"**TEM Morphology:** {morphology}")
-                    st.markdown(f"**Structural Similarity:** {similarity}")
-                    st.markdown(f"**Plaque Characteristics:** {plaque_char}")
-                with d2:
-                    st.markdown(f"**Genome Size:** {g_size}")
-                    st.markdown(f"**GC Content:** {gc_val}")
-                    st.markdown(f"**Optimal MOI:** {moi_val}")
-                    st.markdown(f"**Article DOI Reference:** `{doi_raw}`")
+            card_html = (
+                f'<div class="clinician-card">'
+                f'<div class="card-top-row">'
+                f'<div>'
+                f'<div class="card-phage-title">🦠 {phage_name}</div>'
+                f'<div class="target-pathogen-title">Target: <b>{host_name}</b>{challenge_str}</div>'
+                f'</div>'
+                f'<div><span class="badge {badge_class}">{badge_text}</span></div>'
+                f'</div>'
+                f'<div class="card-meta-line">📍 <b>Lab / Location:</b> {location}</div>'
+                f'<div class="card-meta-line">💧 <b>Source:</b> {sample_src} &nbsp;·&nbsp; 🧬 <b>Accession:</b> {accession_raw}</div>'
+                f'<div class="card-actions-row">'
+                f'{contact_btn_html}'
+                f'{doi_btn_html}'
+                f'{ncbi_btn_html}'
+                f'</div>'
+                f'<details class="card-details-drawer">'
+                f'<summary>🔬 View Lab Kinetics & Virology Parameters</summary>'
+                f'<div class="card-details-content">'
+                f'<div class="details-grid">'
+                f'<div class="details-item"><span class="details-label">Optimal Temp</span><span class="details-val">{temp}</span></div>'
+                f'<div class="details-item"><span class="details-label">Optimal pH</span><span class="details-val">{ph_val}</span></div>'
+                f'<div class="details-item"><span class="details-label">Burst Kinetics</span><span class="details-val">{burst}</span></div>'
+                f'<div class="details-item"><span class="details-label">Latent Period</span><span class="details-val">{latent}</span></div>'
+                f'<div class="details-item"><span class="details-label">Taxonomy</span><span class="details-val">{taxonomy}</span></div>'
+                f'<div class="details-item"><span class="details-label">TEM Morphology</span><span class="details-val">{morphology}</span></div>'
+                f'<div class="details-item"><span class="details-label">Structural Similarity</span><span class="details-val">{similarity}</span></div>'
+                f'<div class="details-item"><span class="details-label">Genome Size</span><span class="details-val">{g_size}</span></div>'
+                f'<div class="details-item"><span class="details-label">GC Content</span><span class="details-val">{gc_val}</span></div>'
+                f'<div class="details-item"><span class="details-label">Optimal MOI</span><span class="details-val">{moi_val}</span></div>'
+                f'<div class="details-item"><span class="details-label">Plaque Shape</span><span class="details-val">{plaque_char}</span></div>'
+                f'<div class="details-item"><span class="details-label">DOI Reference</span><span class="details-val">{doi_raw}</span></div>'
+                f'</div>'
+                f'</div>'
+                f'</details>'
+                f'</div>'
+            )
+            st.markdown(card_html, unsafe_allow_html=True)
 
         # Bottom actions
         st.markdown("<br>", unsafe_allow_html=True)
